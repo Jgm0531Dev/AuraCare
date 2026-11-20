@@ -1,8 +1,44 @@
 {
   "color": [
-    {
-      "name": "start_window_background",
-      "value": "#FFFFFF"
-    }
+    { "name": "start_window_background", "value": "#000000" },
+    { "name": "accion_principal", "value": "#FF3B30" },
+    { "name": "red", "value": "#FF3B30" },
+    { "name": "green", "value": "#34C759" },
+    { "name": "orange", "value": "#FF9500" },
+    { "name": "blue", "value": "#32ADE6" },
+    { "name": "card", "value": "#1C1C1E" },
+    { "name": "border", "value": "#2C2C2E" },
+    { "name": "muted", "value": "#8E8E93" },
+    { "name": "text_primary", "value": "#FFFFFF" },
+    { "name": "text_secondary", "value": "#A1A1AA" },
+    { "name": "background", "value": "#101012" },
+    { "name": "shell_start", "value": "#29292D" },
+    { "name": "shell_mid", "value": "#171719" },
+    { "name": "shell_end", "value": "#0C0C0D" },
+    { "name": "watch_background", "value": "#000000" },
+    { "name": "disabled_background", "value": "#3A3A3C" },
+    { "name": "secondary_background", "value": "#14FFFFFF" },
+    { "name": "secondary_border", "value": "#48484E" },
+    { "name": "subtle_border", "value": "#0FFFFFFF" },
+    { "name": "surface_dark", "value": "#141416" },
+    { "name": "surface_deep", "value": "#0D0D10" },
+    { "name": "danger_tint", "value": "#3A1513" },
+    { "name": "gray_242426", "value": "#242426" },
+    { "name": "gray_070707", "value": "#070707" },
+    { "name": "gray_242428", "value": "#242428" },
+    { "name": "gray_2a2a2e", "value": "#2A2A2E" },
+    { "name": "gray_2c2c34", "value": "#2C2C34" },
+    { "name": "gray_3a3a40", "value": "#3A3A40" },
+    { "name": "gray_48484c", "value": "#48484C" },
+    { "name": "gray_636366", "value": "#636366" },
+    { "name": "gray_d1d1d6", "value": "#D1D1D6" },
+    { "name": "gray_e5e5ea", "value": "#E5E5EA" },
+    { "name": "gray_f2f2f7", "value": "#F2F2F7" },
+    { "name": "gray_08080a", "value": "#08080A" },
+    { "name": "contact_ml", "value": "#E05656" },
+    { "name": "contact_cg", "value": "#32ADE6" },
+    { "name": "contact_er", "value": "#34C759" },
+    { "name": "contact_pm", "value": "#FF9500" },
+    { "name": "contact_lf", "value": "#A55EEA" }
   ]
 }

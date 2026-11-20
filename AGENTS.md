@@ -1,0 +1,20 @@
+# Reglas del proyecto (ArkTS, HarmonyOS NEXT, wearable, SDK 6.1.1(24))
+- SDK real: 6.1.1(24), según build-profile.json5. EJEMPLO_ARQUITECTURA.md cita 6.0.1(21) solo como referencia histórica; no alinear a esa versión.
+- Leer UI_SPEC.md, RUTA_DE_TRABAJO.md y EJEMPLO_ARQUITECTURA.md (solo datos de SDK y convenciones) antes de editar.
+- Antes de editar, decir qué archivos se van a tocar. Cambios pequeños; no reescribir archivos completos.
+- Estado con decoradores V2 (@ComponentV2, @Local, @Param, @ObservedV2, @Trace). No mezclar V1 y V2 en la misma jerarquía.
+- @Trace solo se admite en miembros de clases decoradas con @ObservedV2 (si no, error 10905343).
+- El build() de un @Entry debe tener un contenedor (Column/Stack) como raíz, no un componente custom directo (error 10905210).
+- px2vp global está deprecado: usar uiContext.px2vp, inyectando this.getUIContext() desde la raíz en aboutToAppear().
+- Navegación principal: ArcSwiper vertical con ArcDotIndicator en ArcDirection.THREE_CLOCK_DIRECTION (@kit.ArkUI), no Swiper. ArcSwiper no está en el ámbito global: importarlo explícitamente desde @kit.ArkUI. Si falla, documentar el motivo y volver a Swiper con indicador propio.
+- Listas (Sensores, Contactos, Ficha médica): ArcList/ArcListItem descartado: curva las filas y exige LengthMetrics, mientras UI_SPEC.md pide tarjetas planas de 72cqw con degradados de 24 px. Usar List con degradado en los bordes.
+- La UI no importa sensores directamente: solo la interfaz SensorProvider. La máquina de estados de emergencia es TS puro, sin imports de UI.
+- APIs del sistema siempre con @kit.*. Nombres de archivo e imports con capitalización exacta (caseSensitiveCheck activo).
+- Colores y textos en resources ($r('app.color.*'), $r('app.string.*')); tamaños de fuente, espaciados y radios en DesignTokens.ets, aplicados siempre con Dimens. Sin px fijos ni colores literales en las pantallas.
+- Todas las medidas, incluidos los tamaños de fuente, pasan por Dimens (base 466, un único factor = anchoRaízVp/466). Colores y textos van en resources.
+- Zona segura: 14% arriba/abajo y 9% a los lados. Texto mínimo de 20 px (base 466); áreas táctiles de 48 px.
+- Cada permiso nuevo se declara en module.json5 con su "reason" en español y se solicita en tiempo de ejecución.
+- Logs con hilog, dominio y tag propios del proyecto (no 'testTag').
+- RealSensorProvider: decidir disponibilidad con sensor.getSensorList()/getSensorListSync() filtrando por SensorId; nunca llamar sensor.on() a ciegas. "Activar" (permiso) es estado distinto de "No disponible". Siempre sensor.off al salir; intervalos en nanosegundos.
+- SpO₂: proveedor propio (SpO2Provider), separado de ritmo cardiaco. En demo es simulado y debe marcarse como tal; solo lectura real si existe Health Service Kit. Este SDK 6.1.1(24) no expone esa API: avisar antes de usar otra.
+- Liberar sensores y ubicación cuando no se usen. Compilar tras cada bloque. No hacer commit.

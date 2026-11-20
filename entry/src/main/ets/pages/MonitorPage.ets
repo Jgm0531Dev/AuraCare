@@ -1,0 +1,20 @@
+import { PageHeader } from '../components/PageHeader';
+import { dimens } from '../util/Dimens';
+
+@ComponentV2
+export struct MonitorPage {
+  build() {
+    Column() {
+      PageHeader({ title: $r('app.string.page_monitor') })
+    }
+    .width('100%')
+    .height('100%')
+    .padding({
+      top: dimens.safeTop(), bottom: dimens.safeBottom(),
+      left: dimens.safeLeft(), right: dimens.safeRight()
+    })
+    .onAreaChange((_oldValue: Area, newValue: Area) => {
+      dimens.logArea('MonitorPage', 'RootColumn', newValue);
+    })
+  }
+}
