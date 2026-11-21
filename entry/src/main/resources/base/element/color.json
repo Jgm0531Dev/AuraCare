@@ -39,6 +39,10 @@
     { "name": "contact_cg", "value": "#32ADE6" },
     { "name": "contact_er", "value": "#34C759" },
     { "name": "contact_pm", "value": "#FF9500" },
-    { "name": "contact_lf", "value": "#A55EEA" }
+    { "name": "contact_lf", "value": "#A55EEA" },
+    { "name": "halo_red", "value": "#59FF3B30" },
+    { "name": "halo_clear", "value": "#00FF3B30" },
+    { "name": "ring_track", "value": "#33FFFFFF" },
+    { "name": "transparent", "value": "#00000000" }
   ]
 }

@@ -150,4 +150,19 @@ export class DesignTokens {
   static readonly radiusCardCqw: number = 4;
   static readonly radiusInfoCardCqw: number = 4.2;
   static readonly radiusSensorCardCqw: number = 4.6;
+
+  // Pantallas de cuenta atrás (¿Estás bien? / Pidiendo ayuda), base 466.
+  static readonly countdownRingBase: number = 96;
+  static readonly countdownRingStrokeBase: number = 10;
+  static readonly countdownNumberBase: number = 40;
+  static readonly countdownGapBase: number = 6;
+  static readonly countdownButtonGapBase: number = 8;
+  static readonly haloPulseMs: number = 2000;
+  static readonly haloOpacityLow: number = 0.55;
+  // Alerta enviada: filas fijas.
+  static readonly alertRowHeightBase: number = 72;
+  static readonly alertAvatarBase: number = 48;
+  static readonly alertRowPaddingBase: number = 12;
+  static readonly alertGapBase: number = 8;
+  static readonly alertHeaderBase: number = 64;
 }
