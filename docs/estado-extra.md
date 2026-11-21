@@ -23,3 +23,45 @@
 - En previsualizador: presionar y soltar sin mover el puntero sobre Sensibilidad y Tiempo entre avisos; revisar `previewer.log` para confirmar `onClick sensitivity`/`onClick notice` y los valores antes/después.
 - Revisar los logs `RangePage` con 50/78/92/120 bpm y ajustar solo si el marcador queda fuera del tramo visible.
 - Si aparece conflicto de gestos, registrar el caso para CORE y mantener este archivo actualizado con cada push de `feat/pantallas-extra`.
+
+## >>> EXTRA: RealSensorProvider (tarea excepcional, solo archivo nuevo + este doc)
+- Nuevo `entry/src/main/ets/service/RealSensorProvider.ets`, sin usarse todavía y con `BUILD SUCCESSFUL`. Implementa exactamente `SensorProvider` (`read`, `capabilities`, `setVariant`, `setCapabilities`, `release`) y no importa UI.
+- Disponibilidad: `await sensor.getSensorList()` filtrando por `sensor.SensorId.HEART_RATE` y `SensorId.ACCELEROMETER`; nunca se llama a `sensor.on()` sin ese filtro previo.
+- Solicitud de permiso en método propio, sin UI: `async requestPermission(context: Context): Promise<boolean>` usa `abilityAccessCtrl.requestPermissionsFromUser` con `ohos.permission.READ_HEALTH_DATA`.
+- Estados: sensor ausente o sin datos en 10 s → `SensorStatus.Unavailable`; permiso denegado → `SensorStatus.PermissionRequired` (“Activar”, distinto de “No disponible”); con datos → `SensorStatus.Measuring`. En todos los fallos se emite el valor simulado del variante y solo se escribe hilog (sin errores visibles). `release()` hace `sensor.off()` de ambos sensores dentro de `try/catch`.
+- Intervalos en nanosegundos: pulso `1000000000` ns (1 s) y acelerómetro `200000000` ns (200 ms).
+- Umbrales de movimiento: ventana deslizante de 5000 ms sobre la desviación de la magnitud de aceleración respecto a 9.81 m/s², con al menos 4 muestras. `Inmóvil` si media < 0.12 y máximo < 0.25 m/s²; `En reposo` si media < 0.55 m/s²; `Caminando` en caso contrario.
+
+### Bloque exacto que CORE debe poner en `module.json5` (requestPermissions)
+```json5
+"requestPermissions": [
+  {
+    "name": "ohos.permission.VIBRATE",
+    "reason": "$string:permission_vibrate_reason",
+    "usedScene": {
+      "abilities": [
+        "EntryAbility"
+      ],
+      "when": "inuse"
+    }
+  },
+  {
+    "name": "ohos.permission.READ_HEALTH_DATA",
+    "reason": "Permite leer la frecuencia cardiaca del sensor del reloj para detectar emergencias.",
+    "usedScene": {
+      "abilities": [
+        "EntryAbility"
+      ],
+      "when": "inuse"
+    }
+  }
+]
+```
+
+### 2 líneas que CORE debe añadir en `SensorService.ets` para elegir el proveedor
+```arkts
+import { RealSensorProvider } from './RealSensorProvider';
+private provider: SensorProvider = new RealSensorProvider();
+```
+Sustituyen a las dos líneas actuales de `MockSensorProvider`. Si se quiere pedir el permiso activamente, CORE debe llamar una vez a `requestPermission(context)` desde su capa de ability, sin pasar UI al proveedor.
+## <<< EXTRA
