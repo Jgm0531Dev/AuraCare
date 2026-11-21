@@ -180,4 +180,7 @@ export class DesignTokens {
   static readonly sensorChipFontBase: number = 22;
   static readonly sensorChipPaddingBase: number = 6;
   static readonly sensorUnavailableOpacity: number = 0.4;
+  // Alerta enviada simulada: cabecera + aviso fijo (hasta 3 líneas de 26 base, interlínea 30).
+  static readonly alertBannerLineBase: number = 30;
+  static readonly alertBannerMaxLines: number = 3;
 }

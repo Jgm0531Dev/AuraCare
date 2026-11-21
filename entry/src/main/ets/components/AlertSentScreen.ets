@@ -5,6 +5,7 @@ import { emergencyService } from '../service/EmergencyService';
 import { DesignTokens } from '../util/DesignTokens';
 import { dimens } from '../util/Dimens';
 import { ScreenScaffold } from './ScreenScaffold';
+import { ALERTS_SIMULATED } from '../util/AppConfig';
 
 /** Pantalla de alerta enviada, pendiente o sin contactos. Nunca confirma un envío ficticio. */
 @ComponentV2
@@ -24,7 +25,7 @@ export struct AlertSentScreen {
     if (this.isOffline()) {
       return $r('app.string.alert_pending');
     }
-    return $r('app.string.alert_sent');
+    return ALERTS_SIMULATED ? $r('app.string.alert_simulated_title') : $r('app.string.alert_sent');
   }
 
   private headerReason(): Resource {
@@ -54,6 +55,9 @@ export struct AlertSentScreen {
   }
 
   private contactStatus(contact: EmergencyContact): Resource {
+    if (ALERTS_SIMULATED && !this.isOffline()) {
+      return $r('app.string.contact_simulated');
+    }
     if (this.isOffline()) {
       return $r('app.string.contact_pending');
     }
@@ -175,6 +179,18 @@ export struct AlertSentScreen {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .textAlign(TextAlign.Center)
         .width('100%')
+
+      // Aviso fijo (no hace scroll) mientras el envío sea simulado.
+      if (ALERTS_SIMULATED) {
+        Text($r('app.string.alert_simulated_banner'))
+          .fontSize(dimens.u(DesignTokens.fsMin))
+          .lineHeight(dimens.u(DesignTokens.alertBannerLineBase))
+          .fontColor($r('app.color.orange'))
+          .maxLines(DesignTokens.alertBannerMaxLines)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .textAlign(TextAlign.Center)
+          .width('100%')
+      }
     }
     .width('100%')
     .height('100%')
@@ -212,7 +228,7 @@ export struct AlertSentScreen {
               .fontWeight(FontWeight.Bold)
               .maxLines(1)
           }
-          Text($r('app.string.location_shared'))
+          Text(ALERTS_SIMULATED ? $r('app.string.location_simulated') : $r('app.string.location_shared'))
             .fontSize(dimens.u(DesignTokens.fsMin))
             .fontColor($r('app.color.green'))
             .maxLines(1)
@@ -278,7 +294,10 @@ export struct AlertSentScreen {
     ScreenScaffold({
       logTag: 'AlertSentScreen',
       scaffoldBackground: $r('app.color.surface_deep'),
-      headerHeightBase: DesignTokens.alertHeaderBase,
+      // 64 + aviso de hasta 3 x 30 = 154 base; el cuerpo con scroll conserva ~182.
+      headerHeightBase: ALERTS_SIMULATED ?
+        DesignTokens.alertHeaderBase + DesignTokens.alertBannerLineBase * DesignTokens.alertBannerMaxLines :
+        DesignTokens.alertHeaderBase,
       headerContent: (): void => {
         this.alertHeader();
       },
