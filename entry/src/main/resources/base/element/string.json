@@ -98,6 +98,7 @@
     { "name": "spo2_no_sensor_hint", "value": "Este modelo no tiene sensor de oxígeno" },
     { "name": "spo2_back_to_sensors", "value": "Volver a Sensores" },
     { "name": "back", "value": "Volver" },
+    { "name": "close", "value": "Cerrar" },
 
     { "name": "range_title", "value": "Tu rango normal" },
     { "name": "range_resting", "value": "En reposo" },

@@ -71,8 +71,11 @@ struct Index {
     if (name === 'demo') {
       DemoPanelPage({
         onBack: (): void => {
-          this.pathStack.pop();
-          this.syncNavDepth('demoPop');
+          try {
+            this.pathStack.pop();
+          } finally {
+            this.syncNavDepth('demoPop');
+          }
         }
       })
     } else {
@@ -181,7 +184,9 @@ struct Index {
           .width('100%')
           .height('100%')
           .border({ width: dimens.thinBorder(), color: $r('app.color.accion_principal') })
+          .hitTestBehavior(HitTestMode.None)
       }
+      .hitTestBehavior(HitTestMode.None)
       .width('100%')
       .height('100%')
       .padding({
@@ -200,6 +205,7 @@ struct Index {
           bottom: dimens.cqw(DesignTokens.chipValueGapCqw)
         })
         .margin({ top: dimens.safeTop(), left: dimens.safeLeft() })
+        .hitTestBehavior(HitTestMode.None)
     }
     .width('100%')
     .height('100%')
@@ -215,6 +221,11 @@ struct Index {
           ArcSwiper() {
             MonitorPage({
               onOpenDemo: (): void => {
+                // Badge y pulsación larga pueden disparar dos veces: un solo panel en la pila.
+                if (this.pathStack.getAllPathName().indexOf('demo') >= 0) {
+                  this.syncNavDepth('demoPush ignorado (ya abierto)');
+                  return;
+                }
                 this.pathStack.pushPath({ name: 'demo' });
                 this.syncNavDepth('demoPush');
               },
@@ -240,6 +251,10 @@ struct Index {
           .index(this.activePage)
           .onChange((index: number) => {
             this.activePage = index;
+            if (DEBUG_LAYOUT) {
+              Logger.info('Index',
+                `arcSwiper onChange: page=${index} overlayOpen=${appStore.dialogOpen} alert=${appStore.emergency.state} navStackDepth=${this.pathStack.size()}`);
+            }
           })
           .onAreaChange((_oldValue: Area, newValue: Area) => {
             dimens.logArea('Index', 'ArcSwiper', newValue);

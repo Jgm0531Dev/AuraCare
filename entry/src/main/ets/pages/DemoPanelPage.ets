@@ -1,40 +1,104 @@
 import { DesignTokens } from '../util/DesignTokens';
-import { dimens } from '../util/Dimens';
+import { DEBUG_LAYOUT, dimens } from '../util/Dimens';
+import { Logger } from '../util/Logger';
 import { appStore } from '../state/AppStore';
 import { sensorService } from '../service/SensorService';
 import { emergencyService } from '../service/EmergencyService';
 import { AlertReason } from '../model/AlertReason';
 import { PulseState } from '../model/PulseState';
 import { SensorStatus } from '../model/SensorAvailability';
-import { WatchBackButton } from '../components/WatchBackButton';
 import { ScreenScaffold } from '../components/ScreenScaffold';
+
+const TAG: string = 'DemoPanelPage';
+/** Distancia mínima (base 466) del deslizamiento a la derecha que cierra el panel. */
+const SWIPE_CLOSE_BASE: number = 60;
 
 @ComponentV2
 export struct DemoPanelPage {
   @Param onBack: () => void = () => {};
   @Local reason: AlertReason = AlertReason.PulsoCritico;
   @Local timeScale: number = 1;
+  private closing: boolean = false;
 
   aboutToAppear(): void {
     appStore.demoPanelVisible = true;
+    this.log('aboutToAppear');
   }
 
   aboutToDisappear(): void {
     appStore.demoPanelVisible = false;
+    this.log('aboutToDisappear');
+  }
+
+  private log(event: string): void {
+    if (DEBUG_LAYOUT) {
+      Logger.info(TAG,
+        `${event}: navStackDepth=${appStore.navStackDepth} overlayOpen=${appStore.dialogOpen} alert=${appStore.emergency.state}`);
+    }
+  }
+
+  /** Único camino de salida (botón Cerrar, gesto atrás, swipe a la derecha). */
+  private close(source: string): void {
+    if (this.closing) {
+      this.log(`close ignorado (ya cerrando) source=${source}`);
+      return;
+    }
+    this.closing = true;
+    this.log(`close source=${source}`);
+    try {
+      this.onBack();
+    } catch (err) {
+      Logger.error(TAG, `close falló source=${source}`, err as Object);
+    } finally {
+      // La bandera global se limpia aunque pop() falle.
+      appStore.demoPanelVisible = false;
+      this.closing = false;
+    }
   }
 
   @Builder
-  private choiceButton(label: Resource, color: Resource, onPress: () => void): void {
+  private choiceButton(name: string, label: Resource, color: Resource, onPress: () => void): void {
     Button() {
       Text(label)
         .fontSize(dimens.u(DesignTokens.fsLabel))
         .fontColor($r('app.color.text_primary'))
+        .maxLines(2)
+        .textAlign(TextAlign.Center)
     }
     .layoutWeight(1)
-    .height(dimens.cqw(DesignTokens.demoButtonHeightCqw))
+    .height(dimens.touchMin())
     .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
     .backgroundColor(color)
-    .onClick(onPress)
+    .onClick((): void => {
+      this.log(`onClick ${name}`);
+      onPress();
+    })
+  }
+
+  /** Botón de ancho completo, para etiquetas largas. */
+  @Builder
+  private wideButton(name: string, label: Resource, color: Resource, onPress: () => void): void {
+    Button() {
+      Text(label)
+        .fontSize(dimens.u(DesignTokens.fsBody))
+        .fontColor($r('app.color.text_primary'))
+        .fontWeight(FontWeight.Bold)
+        .maxLines(2)
+        .textAlign(TextAlign.Center)
+    }
+    .width('100%')
+    .height(dimens.touchMin())
+    .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
+    .backgroundColor(color)
+    .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+    .onClick((): void => {
+      this.log(`onClick ${name}`);
+      onPress();
+    })
+  }
+
+  private reasonColor(reason: AlertReason): Resource {
+    return this.reason === reason ? $r('app.color.accion_principal') : $r('app.color.card');
   }
 
   @Builder
@@ -52,9 +116,13 @@ export struct DemoPanelPage {
       Text(label)
         .fontSize(dimens.u(DesignTokens.fsLabel))
         .fontColor($r('app.color.text_primary'))
+        .layoutWeight(1)
       Toggle({ type: ToggleType.Switch, isOn: isOn })
         .selectedColor($r('app.color.green'))
-        .onChange(onChange)
+        .onChange((value: boolean): void => {
+          this.log(`onChange switch id=${label.id} value=${value}`);
+          onChange(value);
+        })
     }
     .width('100%')
     .constraintSize({ minHeight: dimens.touchMin() })
@@ -65,7 +133,23 @@ export struct DemoPanelPage {
   demoBody() {
     Scroll() {
       Column() {
-        WatchBackButton({ label: $r('app.string.back'), onBack: this.onBack })
+        // Dentro del flujo (no position): siempre visible arriba y de 72 base.
+        Button() {
+          Text($r('app.string.close'))
+            .fontSize(dimens.u(DesignTokens.fsBody))
+            .fontColor($r('app.color.text_primary'))
+            .fontWeight(FontWeight.Bold)
+        }
+        .width(dimens.percent(DesignTokens.primaryButtonWidthPercent))
+        .height(dimens.touchMin())
+        .borderRadius(dimens.touchMin() / 2)
+        .backgroundColor($r('app.color.card'))
+        .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
+        .accessibilityText($r('app.string.close'))
+        .onClick((): void => {
+          this.log('onClick close');
+          this.close('button');
+        })
 
         Text($r('app.string.demo_panel_title'))
           .fontSize(dimens.u(DesignTokens.fsSubtitle))
@@ -77,13 +161,13 @@ export struct DemoPanelPage {
 
         this.sectionTitle($r('app.string.demo_time_speed_title', this.timeScale))
         Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-          this.choiceButton($r('app.string.demo_speed_1'), this.speedColor(1), (): void => {
+          this.choiceButton('speed1', $r('app.string.demo_speed_1'), this.speedColor(1), (): void => {
             this.selectSpeed(1);
           })
-          this.choiceButton($r('app.string.demo_speed_5'), this.speedColor(5), (): void => {
+          this.choiceButton('speed5', $r('app.string.demo_speed_5'), this.speedColor(5), (): void => {
             this.selectSpeed(5);
           })
-          this.choiceButton($r('app.string.demo_speed_10'), this.speedColor(10), (): void => {
+          this.choiceButton('speed10', $r('app.string.demo_speed_10'), this.speedColor(10), (): void => {
             this.selectSpeed(10);
           })
         }
@@ -91,13 +175,13 @@ export struct DemoPanelPage {
 
         this.sectionTitle($r('app.string.demo_pulse_selector'))
         Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-          this.choiceButton($r('app.string.demo_state_normal'), $r('app.color.green'), (): void => {
+          this.choiceButton('pulseNormal', $r('app.string.demo_state_normal'), $r('app.color.green'), (): void => {
             this.selectPulse(PulseState.Normal);
           })
-          this.choiceButton($r('app.string.demo_state_elevated'), $r('app.color.orange'), (): void => {
+          this.choiceButton('pulseElevated', $r('app.string.demo_state_elevated'), $r('app.color.orange'), (): void => {
             this.selectPulse(PulseState.Elevated);
           })
-          this.choiceButton($r('app.string.demo_state_critical'), $r('app.color.red'), (): void => {
+          this.choiceButton('pulseCritical', $r('app.string.demo_state_critical'), $r('app.color.red'), (): void => {
             this.selectPulse(PulseState.Critical);
           })
         }
@@ -123,72 +207,41 @@ export struct DemoPanelPage {
           emergencyService.updateAutoAlert(appStore);
         })
         this.sectionTitle($r('app.string.demo_reason_title'))
-        Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-          this.choiceButton($r('app.string.demo_reason_pulse'), $r('app.color.card'), (): void => {
+        // Etiquetas largas: una por fila y la elegida resaltada.
+        this.wideButton('reasonPulse', $r('app.string.demo_reason_pulse'),
+          this.reasonColor(AlertReason.PulsoCritico), (): void => {
             this.reason = AlertReason.PulsoCritico;
           })
-          this.choiceButton($r('app.string.demo_reason_fall'), $r('app.color.card'), (): void => {
+        this.wideButton('reasonFall', $r('app.string.demo_reason_fall'),
+          this.reasonColor(AlertReason.Caida), (): void => {
             this.reason = AlertReason.Caida;
           })
-          this.choiceButton($r('app.string.demo_reason_sos'), $r('app.color.card'), (): void => {
+        this.wideButton('reasonSos', $r('app.string.demo_reason_sos'),
+          this.reasonColor(AlertReason.SosManual), (): void => {
             this.reason = AlertReason.SosManual;
           })
-        }
-        .width('100%')
 
-        Button() {
-          Text($r('app.string.demo_simulate_alert'))
-            .fontSize(dimens.u(DesignTokens.fsBody))
-            .fontColor($r('app.color.text_primary'))
-            .fontWeight(FontWeight.Bold)
-        }
-        .width('100%')
-        .height(dimens.cqw(DesignTokens.demoButtonHeightCqw))
-        .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
-        .backgroundColor($r('app.color.accion_principal'))
-        .margin({ top: dimens.cqw(DesignTokens.demoSectionGapCqw) })
-        .onClick((): void => {
-          emergencyService.simulateAlert(this.reason);
-        })
-
-        Button() {
-          Text($r('app.string.demo_view_alert_sent'))
-            .fontSize(dimens.u(DesignTokens.fsBody))
-            .fontColor($r('app.color.text_primary'))
-            .fontWeight(FontWeight.Bold)
-        }
-        .width('100%')
-        .height(dimens.cqw(DesignTokens.demoButtonHeightCqw))
-        .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
-        .backgroundColor($r('app.color.card'))
-        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
-        .onClick((): void => {
-          emergencyService.viewAlertSent();
-        })
-
-        Button() {
-          Text($r('app.string.demo_simulate_contact_response'))
-            .fontSize(dimens.u(DesignTokens.fsBody))
-            .fontColor($r('app.color.text_primary'))
-            .fontWeight(FontWeight.Bold)
-        }
-        .width('100%')
-        .height(dimens.cqw(DesignTokens.demoButtonHeightCqw))
-        .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
-        .backgroundColor($r('app.color.card'))
-        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
-        .onClick((): void => {
-          emergencyService.advanceContactResponse();
-        })
+        this.wideButton('simulateAlert', $r('app.string.demo_simulate_alert'),
+          $r('app.color.accion_principal'), (): void => {
+            emergencyService.simulateAlert(this.reason);
+          })
+        this.wideButton('viewAlertSent', $r('app.string.demo_view_alert_sent'),
+          $r('app.color.card'), (): void => {
+            emergencyService.viewAlertSent();
+          })
+        this.wideButton('contactResponse', $r('app.string.demo_simulate_contact_response'),
+          $r('app.color.card'), (): void => {
+            emergencyService.advanceContactResponse();
+          })
 
         Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-          this.choiceButton($r('app.string.demo_offline'), $r('app.color.card'), (): void => {
+          this.choiceButton('modeOffline', $r('app.string.demo_offline'), this.modeColor('offline'), (): void => {
             appStore.mode = 'offline';
           })
-          this.choiceButton($r('app.string.demo_first_use'), $r('app.color.card'), (): void => {
+          this.choiceButton('modeFirstUse', $r('app.string.demo_first_use'), this.modeColor('first-use'), (): void => {
             appStore.mode = 'first-use';
           })
-          this.choiceButton($r('app.string.monitor_live'), $r('app.color.card'), (): void => {
+          this.choiceButton('modeLive', $r('app.string.monitor_live'), this.modeColor('live'), (): void => {
             appStore.mode = 'live';
             emergencyService.updateAutoAlert(appStore);
           })
@@ -201,25 +254,17 @@ export struct DemoPanelPage {
             emergencyService.setContactsEmpty(value);
           })
 
-        Button() {
-          Text($r('app.string.demo_contact_added'))
-            .fontSize(dimens.u(DesignTokens.fsBody))
-            .fontColor($r('app.color.text_primary'))
-            .fontWeight(FontWeight.Bold)
-        }
-        .width('100%')
-        .height(dimens.cqw(DesignTokens.demoButtonHeightCqw))
-        .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
-        .backgroundColor($r('app.color.card'))
-        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
-        .onClick((): void => {
-          emergencyService.addDemoContact();
-        })
+        this.wideButton('contactAdded', $r('app.string.demo_contact_added'),
+          $r('app.color.card'), (): void => {
+            emergencyService.addDemoContact();
+          })
       }
       .width('100%')
+      .alignItems(HorizontalAlign.Center)
     }
     .width('100%')
     .height('100%')
+    .scrollBar(BarState.Off)
   }
 
   build() {
@@ -235,6 +280,28 @@ export struct DemoPanelPage {
     .width('100%')
     .height('100%')
     .backgroundColor($r('app.color.watch_background'))
+    .onBackPressed((): boolean => {
+      // Botón/gesto de sistema: cerramos nosotros para limpiar banderas y loguear.
+      this.close('system-back');
+      return true;
+    })
+    // Swipe a la derecha (convención de Watch): paralelo para no robar el scroll vertical.
+    .parallelGesture(
+      PanGesture({ direction: PanDirection.Right, distance: dimens.u(SWIPE_CLOSE_BASE) })
+        .onActionEnd((_event: GestureEvent): void => {
+          this.close('swipe-right');
+        })
+    )
+    // Sonda: confirma si los toques llegan al panel (solo con DEBUG_LAYOUT).
+    .onTouch((event: TouchEvent): void => {
+      if (DEBUG_LAYOUT && event.type === TouchType.Down && event.touches.length > 0) {
+        Logger.info(TAG, `touchDown x=${event.touches[0].x.toFixed(0)} y=${event.touches[0].y.toFixed(0)}`);
+      }
+    })
+  }
+
+  private modeColor(mode: string): Resource {
+    return appStore.mode === mode ? $r('app.color.green') : $r('app.color.card');
   }
 
   private speedColor(speed: number): Resource {
