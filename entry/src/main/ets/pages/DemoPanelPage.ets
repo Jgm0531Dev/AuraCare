@@ -1,6 +1,6 @@
 import { DesignTokens } from '../util/DesignTokens';
 import { dimens } from '../util/Dimens';
-import { appStore } from '../state/AppStore';
+import { appStore, extraDemoState } from '../state/AppStore';
 import { sensorService } from '../service/SensorService';
 import { emergencyService } from '../service/EmergencyService';
 import { AlertReason } from '../model/AlertReason';
@@ -199,6 +199,10 @@ export struct DemoPanelPage {
         this.hardwareSwitch($r('app.string.demo_contacts_empty'), appStore.contacts.length === 0,
           (value: boolean): void => {
             emergencyService.setContactsEmpty(value);
+          })
+        this.hardwareSwitch($r('app.string.demo_medical_sample'), extraDemoState.medicalSample,
+          (value: boolean): void => {
+            extraDemoState.medicalSample = value;
           })
 
         Button() {

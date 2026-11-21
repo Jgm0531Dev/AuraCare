@@ -262,6 +262,8 @@
     { "name": "icon_users", "value": "👥" },
     { "name": "icon_lock", "value": "🔒" },
     { "name": "icon_phone", "value": "☎" },
-    { "name": "icon_plus", "value": "+" }
+    { "name": "icon_plus", "value": "+" },
+    { "name": "icon_smartphone", "value": "▣" },
+    { "name": "demo_medical_sample", "value": "Datos de ejemplo" }
   ]
 }

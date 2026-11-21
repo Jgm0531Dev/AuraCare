@@ -183,3 +183,11 @@ export class AppStore {
 }
 
 export const appStore: AppStore = new AppStore();
+
+/** Estado de demo añadido por las pantallas P2 (sin persistencia). */
+@ObservedV2
+export class ExtraDemoState {
+  @Trace medicalSample: boolean = false;
+}
+
+export const extraDemoState: ExtraDemoState = new ExtraDemoState();
