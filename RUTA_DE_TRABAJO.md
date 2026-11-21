@@ -33,3 +33,12 @@
 
 ## Regla de corte
 Si el tiempo se acaba, se entrega Fase 0 + 1 + 2 funcionando de punta a punta, con Mock como respaldo. Ninguna fase P1/P2 se empieza con una P0 rota.
+
+## Comandos
+Compilación desde terminal (PowerShell, sin DevEco abierto). Copiar tal cual desde la raíz del proyecto:
+
+```powershell
+$env:NODE_HOME='C:\Program Files\Huawei\DevEco Studio\tools\node'; $env:PATH="C:\Program Files\Huawei\DevEco Studio\jbr\bin;$env:NODE_HOME;$env:PATH"; $env:DEVECO_SDK_HOME='C:\Program Files\Huawei\DevEco Studio\sdk'; & 'C:\Program Files\Huawei\DevEco Studio\tools\hvigor\bin\hvigorw.bat' assembleHap --mode module -p product=default -p buildMode=debug --no-daemon
+```
+
+Notas: `NODE_HOME` y `DEVECO_SDK_HOME` son obligatorios en esta máquina; el JRE de `DevEco Studio\jbr\bin` debe ir en `PATH` para empaquetar el HAP (si falta, `PackageHap` falla con `spawn java ENOENT`). El proyecto no tiene configuración de firma, así que hvigor avisa y genera el HAP sin firmar; eso no es un error de compilación.
