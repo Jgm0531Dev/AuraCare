@@ -75,14 +75,20 @@ export struct MedicalPage {
   @Builder
   medicalEmpty() {
     Column({ space: dimens.cqw(2) }) {
-      Text($r('app.string.icon_smartphone'))
-        .fontSize(dimens.cqw(6.5))
-        .fontColor($r('app.color.text_primary'))
-        .width(dimens.cqw(12))
-        .height(dimens.cqw(12))
-        .borderRadius(dimens.cqw(6))
-        .backgroundColor($r('app.color.card'))
-        .textAlign(TextAlign.Center)
+      Stack() {
+        Circle()
+          .width(dimens.cqw(12))
+          .height(dimens.cqw(12))
+          .fill($r('app.color.card'))
+
+        SymbolGlyph($r('sys.symbol.cross_square_fill'))
+          .fontSize(dimens.cqw(6.5))
+          .fontWeight(FontWeight.Medium)
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+          .fontColor([$r('app.color.text_primary')])
+      }
+      .width(dimens.cqw(12))
+      .height(dimens.cqw(12))
 
       Text($r('app.string.medical_empty_title'))
         .fontSize(dimens.u(DesignTokens.fsLabel))
