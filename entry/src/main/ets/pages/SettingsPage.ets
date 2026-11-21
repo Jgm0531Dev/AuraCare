@@ -1,4 +1,6 @@
-import { PageHeader } from '../components/PageHeader';
+import { ExtraPageHeader } from '../components/ExtraPageHeader';
+import { ExtraSettingButton } from '../components/ExtraSettingButton';
+import { ExtraSettingToggle } from '../components/ExtraSettingToggle';
 import { ScreenScaffold } from '../components/ScreenScaffold';
 import { SensorStatus } from '../model/SensorAvailability';
 import { vibrationService } from '../service/VibrationService';
@@ -6,9 +8,11 @@ import { appStore } from '../state/AppStore';
 import { SENSITIVITY_THRESHOLDS, VibrationPattern } from '../state/EmergencyMachine';
 import { DesignTokens } from '../util/DesignTokens';
 import { dimens } from '../util/Dimens';
+import { Logger } from '../util/Logger';
 
 // REGISTRAR: Index.ets -> ArcSwiper() ya contiene SettingsPage() como sexta página; no añadir nada.
 
+const TAG: string = 'SettingsPage';
 const VIBRATION_FEEDBACK_MS: number = 1600;
 
 @ComponentV2
@@ -44,6 +48,7 @@ export struct SettingsPage {
   }
 
   private cycleSensitivity(): void {
+    Logger.info(TAG, `sensibilidad antes=${appStore.settings.sensitivity}`);
     if (appStore.settings.sensitivity === 'Baja') {
       appStore.settings.sensitivity = 'Media';
     } else if (appStore.settings.sensitivity === 'Media') {
@@ -51,6 +56,7 @@ export struct SettingsPage {
     } else {
       appStore.settings.sensitivity = 'Baja';
     }
+    Logger.info(TAG, `sensibilidad despues=${appStore.settings.sensitivity}`);
   }
 
   private noticeLabel(): Resource {
@@ -67,6 +73,7 @@ export struct SettingsPage {
   }
 
   private cycleNotice(): void {
+    Logger.info(TAG, `aviso antes=${appStore.settings.noticeMinutes}`);
     if (appStore.settings.noticeMinutes === 1) {
       appStore.settings.noticeMinutes = 3;
     } else if (appStore.settings.noticeMinutes === 3) {
@@ -76,6 +83,7 @@ export struct SettingsPage {
     } else {
       appStore.settings.noticeMinutes = 1;
     }
+    Logger.info(TAG, `aviso despues=${appStore.settings.noticeMinutes}`);
   }
 
   private fallAvailable(): boolean {
@@ -83,6 +91,7 @@ export struct SettingsPage {
   }
 
   private testVibration(): void {
+    Logger.info(TAG, 'onClick vibracion');
     vibrationService.vibrate(VibrationPattern.Triple);
     this.vibrationSent = true;
     if (this.feedbackTimer !== undefined) {
@@ -96,164 +105,83 @@ export struct SettingsPage {
 
   @Builder
   settingsHeader() {
-    PageHeader({ title: $r('app.string.page_settings'), icon: $r('app.string.icon_sensor') })
-  }
-
-  @Builder
-  badge(label: Resource, accent: boolean = false) {
-    Text(label)
-      .fontSize(dimens.u(DesignTokens.fsMin))
-      .fontColor(accent ? $r('app.color.green') : $r('app.color.text_primary'))
-      .fontWeight(FontWeight.Bold)
-      .constraintSize({ minHeight: dimens.u(DesignTokens.demoBadgeHeightBase) })
-      .padding({
-        left: dimens.u(DesignTokens.demoBadgePaddingBase),
-        right: dimens.u(DesignTokens.demoBadgePaddingBase)
-      })
-      .borderRadius(dimens.radiusChip())
-      .backgroundColor($r('app.color.card'))
-      .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
-      .maxLines(1)
-  }
-
-  @Builder
-  rowContent(title: Resource, subtitle: Resource) {
-    Column({ space: 0 }) {
-      Text(title)
-        .fontSize(dimens.u(DesignTokens.fsLabel))
-        .fontColor($r('app.color.text_primary'))
-        .fontWeight(FontWeight.Medium)
-        .maxLines(1)
-      Text(subtitle)
-        .fontSize(dimens.u(DesignTokens.fsMin))
-        .fontColor($r('app.color.muted'))
-        .maxLines(2)
-    }
-    .layoutWeight(1)
-    .alignItems(HorizontalAlign.Start)
-    .justifyContent(FlexAlign.Center)
+    ExtraPageHeader({
+      title: $r('app.string.page_settings'),
+      symbol: $r('sys.symbol.gearshape')
+    })
   }
 
   @Builder
   settingsBody() {
     Scroll() {
       Column({ space: dimens.cqw(1.8) }) {
-        Row() {
-          this.rowContent($r('app.string.sensitivity'), $r('app.string.threshold', this.sensitivityThreshold()))
-          this.badge(this.sensitivityLabel())
-        }
-        .width('100%')
-        .constraintSize({ minHeight: dimens.cqw(DesignTokens.infoCardMinHeightCqw) })
-        .padding({
-          top: dimens.cqw(2.4), bottom: dimens.cqw(2.4),
-          left: dimens.cqw(3.6), right: dimens.cqw(3.6)
-        })
-        .backgroundColor($r('app.color.card'))
-        .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
-        .borderRadius(dimens.radiusCard())
-        .onClick((): void => {
-          this.cycleSensitivity();
+        ExtraSettingButton({
+          title: $r('app.string.sensitivity'),
+          subtitle: $r('app.string.threshold', this.sensitivityThreshold()),
+          value: this.sensitivityLabel(),
+          name: 'sensitivity',
+          onPress: (): void => {
+            this.cycleSensitivity();
+          }
         })
 
-        Row() {
-          this.rowContent($r('app.string.notice_time'),
-            $r('app.string.next_notice', appStore.settings.noticeMinutes))
-          this.badge(this.noticeLabel())
-        }
-        .width('100%')
-        .constraintSize({ minHeight: dimens.cqw(DesignTokens.infoCardMinHeightCqw) })
-        .padding({
-          top: dimens.cqw(2.4), bottom: dimens.cqw(2.4),
-          left: dimens.cqw(3.6), right: dimens.cqw(3.6)
-        })
-        .backgroundColor($r('app.color.card'))
-        .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
-        .borderRadius(dimens.radiusCard())
-        .onClick((): void => {
-          this.cycleNotice();
+        ExtraSettingButton({
+          title: $r('app.string.notice_time'),
+          subtitle: $r('app.string.extra_settings_notice_desc'),
+          value: this.noticeLabel(),
+          name: 'notice',
+          onPress: (): void => {
+            this.cycleNotice();
+          }
         })
 
-        Row() {
-          this.rowContent($r('app.string.exercise_mode'),
-            appStore.settings.exerciseMode ? $r('app.string.exercise_paused') : $r('app.string.exercise_frequent'))
-          Toggle({ type: ToggleType.Switch, isOn: appStore.settings.exerciseMode })
-            .selectedColor($r('app.color.green'))
-            .onChange((value: boolean): void => {
-              appStore.settings.exerciseMode = value;
-            })
-        }
-        .width('100%')
-        .constraintSize({ minHeight: dimens.cqw(DesignTokens.infoCardMinHeightCqw) })
-        .padding({
-          top: dimens.cqw(2.4), bottom: dimens.cqw(2.4),
-          left: dimens.cqw(3.6), right: dimens.cqw(3.6)
+        ExtraSettingToggle({
+          title: $r('app.string.exercise_mode'),
+          subtitle: $r('app.string.extra_settings_exercise_desc'),
+          isOn: appStore.settings.exerciseMode,
+          name: 'exerciseMode',
+          onValueChange: (value: boolean): void => {
+            appStore.settings.exerciseMode = value;
+          }
         })
-        .backgroundColor($r('app.color.card'))
-        .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
-        .borderRadius(dimens.radiusCard())
 
-        Row() {
-          this.rowContent($r('app.string.battery_saver'), $r('app.string.battery_desc'))
-          Toggle({ type: ToggleType.Switch, isOn: appStore.settings.batterySaver })
-            .selectedColor($r('app.color.green'))
-            .onChange((value: boolean): void => {
-              appStore.settings.batterySaver = value;
-            })
-        }
-        .width('100%')
-        .constraintSize({ minHeight: dimens.cqw(DesignTokens.infoCardMinHeightCqw) })
-        .padding({
-          top: dimens.cqw(2.4), bottom: dimens.cqw(2.4),
-          left: dimens.cqw(3.6), right: dimens.cqw(3.6)
+        ExtraSettingToggle({
+          title: $r('app.string.battery_saver'),
+          subtitle: $r('app.string.battery_desc'),
+          isOn: appStore.settings.batterySaver,
+          name: 'batterySaver',
+          onValueChange: (value: boolean): void => {
+            appStore.settings.batterySaver = value;
+          }
         })
-        .backgroundColor($r('app.color.card'))
-        .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
-        .borderRadius(dimens.radiusCard())
 
-        Row() {
-          this.rowContent($r('app.string.fall_detection'),
-            this.fallAvailable() ? $r('app.string.fall_accelerometer') : $r('app.string.fall_unavailable'))
-          Toggle({ type: ToggleType.Switch, isOn: appStore.settings.fallDetection })
-            .selectedColor($r('app.color.green'))
-            .enabled(this.fallAvailable())
-            .opacity(this.fallAvailable() ? 1 : 0.4)
-            .accessibilityText(this.fallAvailable() ? $r('app.string.fall_active') : $r('app.string.fall_disabled_hint'))
-            .onChange((value: boolean): void => {
-              if (this.fallAvailable()) {
-                appStore.settings.fallDetection = value;
-              }
-            })
-        }
-        .width('100%')
-        .constraintSize({ minHeight: dimens.cqw(DesignTokens.infoCardMinHeightCqw) })
-        .padding({
-          top: dimens.cqw(2.4), bottom: dimens.cqw(2.4),
-          left: dimens.cqw(3.6), right: dimens.cqw(3.6)
+        ExtraSettingToggle({
+          title: $r('app.string.fall_detection'),
+          subtitle: this.fallAvailable() ? $r('app.string.fall_accelerometer') : $r('app.string.fall_unavailable'),
+          isOn: appStore.settings.fallDetection,
+          switchEnabled: this.fallAvailable(),
+          hint: this.fallAvailable() ? $r('app.string.fall_active') : $r('app.string.fall_disabled_hint'),
+          name: 'fallDetection',
+          onValueChange: (value: boolean): void => {
+            if (this.fallAvailable()) {
+              appStore.settings.fallDetection = value;
+            }
+          }
         })
-        .backgroundColor($r('app.color.card'))
-        .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
-        .borderRadius(dimens.radiusCard())
 
-        Row() {
-          this.rowContent($r('app.string.test_vibration'),
-            this.vibrationSent ? $r('app.string.vibration_sent') : $r('app.string.tactile_notice'))
-          this.badge(this.vibrationSent ? $r('app.string.ready') : $r('app.string.test'), true)
-        }
-        .width('100%')
-        .constraintSize({ minHeight: dimens.cqw(DesignTokens.infoCardMinHeightCqw) })
-        .padding({
-          top: dimens.cqw(2.4), bottom: dimens.cqw(2.4),
-          left: dimens.cqw(3.6), right: dimens.cqw(3.6)
-        })
-        .backgroundColor($r('app.color.card'))
-        .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
-        .borderRadius(dimens.radiusCard())
-        .onClick((): void => {
-          this.testVibration();
+        ExtraSettingButton({
+          title: $r('app.string.test_vibration'),
+          subtitle: this.vibrationSent ? $r('app.string.vibration_sent') : $r('app.string.tactile_notice'),
+          value: this.vibrationSent ? $r('app.string.ready') : $r('app.string.test'),
+          accent: true,
+          name: 'vibration',
+          onPress: (): void => {
+            this.testVibration();
+          }
         })
       }
       .width('100%')
-      .padding({ top: dimens.cqw(2.4), bottom: dimens.cqw(2.4) })
+      .padding({ top: dimens.cqw(2.4), bottom: dimens.cqw(6) })
     }
     .width('100%')
     .height('100%')

@@ -1,4 +1,4 @@
-import { PageHeader } from '../components/PageHeader';
+import { ExtraPageHeader } from '../components/ExtraPageHeader';
 import { ScreenScaffold } from '../components/ScreenScaffold';
 import { extraDemoState } from '../state/AppStore';
 import { DesignTokens } from '../util/DesignTokens';
@@ -31,7 +31,10 @@ const MEDICAL_ROWS: MedicalRow[] = [
 export struct MedicalPage {
   @Builder
   medicalHeader() {
-    PageHeader({ title: $r('app.string.page_medical'), icon: $r('app.string.icon_check') })
+    ExtraPageHeader({
+      title: $r('app.string.page_medical'),
+      symbol: $r('sys.symbol.cross_square_fill')
+    })
   }
 
   @Builder
@@ -53,7 +56,7 @@ export struct MedicalPage {
         .fontSize(dimens.u(DesignTokens.fsBody))
         .fontColor(row.highlight ? $r('app.color.text_primary') : $r('app.color.gray_e5e5ea'))
         .fontWeight(row.highlight ? FontWeight.Bold : FontWeight.Normal)
-        .wordBreak(WordBreak.BREAK_ALL)
+        .wordBreak(WordBreak.NORMAL)
         .maxLines(2)
         .width('100%')
     }
@@ -72,14 +75,20 @@ export struct MedicalPage {
   @Builder
   medicalEmpty() {
     Column({ space: dimens.cqw(2) }) {
-      Text($r('app.string.icon_smartphone'))
-        .fontSize(dimens.cqw(6.5))
-        .fontColor($r('app.color.text_primary'))
-        .width(dimens.cqw(12))
-        .height(dimens.cqw(12))
-        .borderRadius(dimens.cqw(6))
-        .backgroundColor($r('app.color.card'))
-        .textAlign(TextAlign.Center)
+      Stack() {
+        Circle()
+          .width(dimens.cqw(12))
+          .height(dimens.cqw(12))
+          .fill($r('app.color.card'))
+
+        SymbolGlyph($r('sys.symbol.cross_square_fill'))
+          .fontSize(dimens.cqw(6.5))
+          .fontWeight(FontWeight.Medium)
+          .renderingStrategy(SymbolRenderingStrategy.SINGLE)
+          .fontColor([$r('app.color.text_primary')])
+      }
+      .width(dimens.cqw(12))
+      .height(dimens.cqw(12))
 
       Text($r('app.string.medical_empty_title'))
         .fontSize(dimens.u(DesignTokens.fsLabel))
@@ -88,12 +97,14 @@ export struct MedicalPage {
         .textAlign(TextAlign.Center)
         .maxLines(2)
 
-      Text($r('app.string.medical_empty_desc'))
+      Text($r('app.string.extra_medical_empty_desc_short'))
         .fontSize(dimens.u(DesignTokens.fsMin))
         .fontColor($r('app.color.muted'))
-        .wordBreak(WordBreak.BREAK_ALL)
+        .wordBreak(WordBreak.NORMAL)
         .textAlign(TextAlign.Center)
-        .maxLines(6)
+        .width(dimens.cqw(76))
+        .margin({ right: dimens.cqw(3) })
+        .maxLines(2)
     }
     .width('100%')
     .constraintSize({ minHeight: '100%' })
@@ -104,17 +115,21 @@ export struct MedicalPage {
   @Builder
   medicalBody() {
     Scroll() {
-      if (extraDemoState.medicalSample) {
-        Column({ space: dimens.cqw(1.8) }) {
-          ForEach(MEDICAL_ROWS, (row: MedicalRow): void => {
-            this.medicalCard(row)
-          })
+      Column() {
+        if (extraDemoState.medicalSample) {
+          Column({ space: dimens.cqw(1.8) }) {
+            ForEach(MEDICAL_ROWS, (row: MedicalRow): void => {
+              this.medicalCard(row)
+            })
+          }
+          .width('100%')
+          .padding({ top: dimens.cqw(2.4), bottom: dimens.cqw(2.4) })
+        } else {
+          this.medicalEmpty()
         }
-        .width('100%')
-        .padding({ top: dimens.cqw(2.4), bottom: dimens.cqw(2.4) })
-      } else {
-        this.medicalEmpty()
       }
+      .width(dimens.cqw(76))
+      .margin({ right: dimens.cqw(3) })
     }
     .width('100%')
     .height('100%')
