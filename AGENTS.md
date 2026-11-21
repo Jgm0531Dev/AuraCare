@@ -12,7 +12,7 @@
 - APIs del sistema siempre con @kit.*. Nombres de archivo e imports con capitalización exacta (caseSensitiveCheck activo).
 - Colores y textos en resources ($r('app.color.*'), $r('app.string.*')); tamaños de fuente, espaciados y radios en DesignTokens.ets, aplicados siempre con Dimens. Sin px fijos ni colores literales en las pantallas.
 - Todas las medidas, incluidos los tamaños de fuente, pasan por Dimens (base 466, un único factor = anchoRaízVp/466). Colores y textos van en resources.
-- Zona segura: 14% arriba/abajo y 9% a los lados. Texto mínimo de 20 px (base 466); áreas táctiles de 48 px.
+- Zona segura: 14% arriba/abajo y 9% a los lados. Texto mínimo de 26 px (base 466); áreas táctiles de 72 px de alto (los chips no son tocables).
 - Cada permiso nuevo se declara en module.json5 con su "reason" en español y se solicita en tiempo de ejecución.
 - Logs con hilog, dominio y tag propios del proyecto (no 'testTag').
 - RealSensorProvider: decidir disponibilidad con sensor.getSensorList()/getSensorListSync() filtrando por SensorId; nunca llamar sensor.on() a ciegas. "Activar" (permiso) es estado distinto de "No disponible". Siempre sensor.off al salir; intervalos en nanosegundos.

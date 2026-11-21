@@ -1,14 +1,23 @@
 import { ArcDirection, ArcDotIndicator, ArcSwiper } from '@kit.ArkUI';
+import { Context } from '@kit.AbilityKit';
 import { DesignTokens } from '../util/DesignTokens';
 import { DEBUG_LAYOUT, debugRootSize, dimens } from '../util/Dimens';
+import { Logger } from '../util/Logger';
 import { sensorService } from '../service/SensorService';
-import { appStore } from '../state/AppStore';
+import { emergencyService } from '../service/EmergencyService';
+import { vibrationService } from '../service/VibrationService';
+import { appStore, DialogKind } from '../state/AppStore';
+import { AlertState } from '../model/Alert';
 import { MonitorPage } from './MonitorPage';
+import { DemoPanelPage } from './DemoPanelPage';
 import { SensorsPage } from './SensorsPage';
 import { RangePage } from './RangePage';
 import { MedicalPage } from './MedicalPage';
 import { ContactsPage } from './ContactsPage';
 import { SettingsPage } from './SettingsPage';
+import { CountdownAlertScreen } from '../components/CountdownAlertScreen';
+import { AlertSentScreen } from '../components/AlertSentScreen';
+import { AlertConfirmDialog } from '../components/AlertConfirmDialog';
 
 @Entry
 @ComponentV2
@@ -21,26 +30,147 @@ struct Index {
 
   aboutToAppear(): void {
     dimens.init(this.getUIContext());
+    const context: Context | undefined = this.getUIContext().getHostContext();
+    if (context !== undefined) {
+      vibrationService.init(context);
+    }
     sensorService.start(appStore);
+    emergencyService.start(appStore);
     this.indicator
       .arcDirection(ArcDirection.THREE_CLOCK_DIRECTION)
       .itemColor($r('app.color.gray_636366'))
       .selectedItemColor($r('app.color.text_primary'));
+    this.syncNavDepth('aboutToAppear');
+  }
+
+  /** Mantiene el espejo de profundidad y registra el overlay bajo DEBUG_LAYOUT. */
+  private syncNavDepth(event: string): void {
+    appStore.navStackDepth = this.pathStack.size();
+    if (DEBUG_LAYOUT) {
+      Logger.info('Index',
+        `${event}: overlayOpen=${appStore.dialogOpen} navStackDepth=${appStore.navStackDepth}`);
+    }
+  }
+
+  /** Salida de Contactos cuando la lista no puede seguir scrolleando. */
+  private stepPage(delta: number): void {
+    const from: number = this.activePage;
+    const next: number = Math.max(0, Math.min(5, from + delta));
+    if (next === from) {
+      return;
+    }
+    this.activePage = next;
+    if (DEBUG_LAYOUT) {
+      Logger.info('Index',
+        `contactsEdge: from=${from} to=${next} overlayOpen=${appStore.dialogOpen} navStackDepth=${appStore.navStackDepth}`);
+    }
   }
 
   @Builder
   destinationBuilder(name: string, param: Object) {
-    NavDestination() {
-      Column() {
-        Text(name)
-          .fontSize(dimens.u(DesignTokens.fsBody))
-          .fontColor($r('app.color.text_primary'))
+    if (name === 'demo') {
+      DemoPanelPage({
+        onBack: (): void => {
+          this.pathStack.pop();
+          this.syncNavDepth('demoPop');
+        }
+      })
+    } else {
+      NavDestination() {
+        Column() {
+          Text(name)
+            .fontSize(dimens.u(DesignTokens.fsBody))
+            .fontColor($r('app.color.text_primary'))
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
       }
-      .width('100%')
-      .height('100%')
-      .justifyContent(FlexAlign.Center)
+      .title(name)
     }
-    .title(name)
+  }
+
+  aboutToDisappear(): void {
+    emergencyService.dispose();
+    sensorService.release();
+  }
+
+  onBackPress(): boolean {
+    return appStore.emergency.state !== AlertState.None || appStore.dialogOpen;
+  }
+
+  private dialogTitle(): Resource {
+    if (appStore.dialogKind === DialogKind.Call911) {
+      return $r('app.string.call_911_title');
+    }
+    if (appStore.dialogKind === DialogKind.RemoveContact) {
+      return $r('app.string.remove_contact_title');
+    }
+    if (appStore.dialogKind === DialogKind.AddContact) {
+      return $r('app.string.pick_phone');
+    }
+    return $r('app.string.confirm_well_title');
+  }
+
+  private dialogDescription(): Resource {
+    if (appStore.dialogKind === DialogKind.Call911) {
+      return $r('app.string.emergency_911_desc');
+    }
+    if (appStore.dialogKind === DialogKind.RemoveContact) {
+      return $r('app.string.remove_contact_desc', appStore.contactToRemoveName);
+    }
+    if (appStore.dialogKind === DialogKind.AddContact) {
+      return $r('app.string.pick_phone_desc');
+    }
+    return $r('app.string.confirm_well_desc');
+  }
+
+  private dialogConfirmLabel(): Resource {
+    if (appStore.dialogKind === DialogKind.Call911) {
+      return $r('app.string.call');
+    }
+    if (appStore.dialogKind === DialogKind.RemoveContact) {
+      return $r('app.string.remove_contact');
+    }
+    if (appStore.dialogKind === DialogKind.AddContact) {
+      return $r('app.string.understand');
+    }
+    return $r('app.string.confirm_well_yes');
+  }
+
+  private dialogIcon(): Resource {
+    if (appStore.dialogKind === DialogKind.Call911) {
+      return $r('app.string.icon_phone');
+    }
+    if (appStore.dialogKind === DialogKind.RemoveContact) {
+      return $r('app.string.icon_warning');
+    }
+    return $r('app.string.icon_check');
+  }
+
+  private dialogTone(): Resource {
+    return appStore.dialogKind === DialogKind.Call911 ? $r('app.color.red') : $r('app.color.green');
+  }
+
+  @Builder
+  confirmDialog() {
+    AlertConfirmDialog({
+      title: this.dialogTitle(),
+      description: this.dialogDescription(),
+      confirmLabel: this.dialogConfirmLabel(),
+      icon: this.dialogIcon(),
+      tone: this.dialogTone(),
+      hideCancel: appStore.dialogKind === DialogKind.AddContact,
+      showSimulationNote: appStore.dialogKind !== DialogKind.AddContact,
+      onConfirm: (): void => {
+        emergencyService.confirmDialog();
+      },
+      onCancel: (): void => {
+        emergencyService.closeDialog();
+      }
+    })
+    .width('100%')
+    .height('100%')
   }
 
   @Builder
@@ -83,16 +213,29 @@ struct Index {
           // El margen derecho del 9% se aplica en cada página (dimens.safeRight())
           // para que los puntos del indicador no tapen el contenido.
           ArcSwiper() {
-            MonitorPage()
+            MonitorPage({
+              onOpenDemo: (): void => {
+                this.pathStack.pushPath({ name: 'demo' });
+                this.syncNavDepth('demoPush');
+              },
+              onOpenContacts: (): void => {
+                this.activePage = 4;
+              }
+            })
             SensorsPage()
             RangePage()
             MedicalPage()
-            ContactsPage()
+            ContactsPage({
+              onPageStep: (delta: number): void => {
+                this.stepPage(delta);
+              }
+            })
             SettingsPage()
           }
           .width('100%')
           .height('100%')
           .vertical(true)
+          .disableSwipe(appStore.emergency.state !== AlertState.None || appStore.dialogOpen)
           .indicator(this.indicator)
           .index(this.activePage)
           .onChange((index: number) => {
@@ -112,6 +255,51 @@ struct Index {
       }
       .width('100%')
       .height('100%')
+
+      if (appStore.emergency.state === AlertState.AreYouOk ||
+          appStore.emergency.state === AlertState.SosCountdown) {
+        CountdownAlertScreen()
+          .width('100%')
+          .height('100%')
+      }
+
+      if (appStore.emergency.state === AlertState.AlertSent) {
+        AlertSentScreen()
+          .width('100%')
+          .height('100%')
+      }
+
+      if (appStore.dialogOpen) {
+        this.confirmDialog()
+      }
+
+      if (appStore.callingVisible) {
+        Column() {
+          Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
+            Text($r('app.string.calling_prefix'))
+              .fontSize(dimens.u(DesignTokens.fsLabel))
+              .fontColor($r('app.color.text_primary'))
+            Text(appStore.callingName)
+              .fontSize(dimens.u(DesignTokens.fsLabel))
+              .fontColor($r('app.color.text_primary'))
+            Text($r('app.string.calling_suffix'))
+              .fontSize(dimens.u(DesignTokens.fsLabel))
+              .fontColor($r('app.color.text_primary'))
+          }
+          .padding({
+            left: dimens.cqw(DesignTokens.infoCardPaddingCqw),
+            right: dimens.cqw(DesignTokens.infoCardPaddingCqw),
+            top: dimens.cqw(DesignTokens.chipPaddingCqw),
+            bottom: dimens.cqw(DesignTokens.chipPaddingCqw)
+          })
+          .backgroundColor($r('app.color.card'))
+          .borderRadius(dimens.radiusChip())
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Center)
+        .margin({ top: dimens.cqw(DesignTokens.toastTopCqw) })
+        .hitTestBehavior(HitTestMode.Transparent)
+      }
 
       if (DEBUG_LAYOUT) {
         this.debugOverlay()

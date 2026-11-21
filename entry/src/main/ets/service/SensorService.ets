@@ -2,22 +2,41 @@ import { SensorProvider } from './SensorProvider';
 import { MockSensorProvider } from './MockSensorProvider';
 import { SpO2Provider } from './SpO2Provider';
 import { MockSpO2Provider } from './MockSpO2Provider';
-import { AppStore } from '../state/AppStore';
+import { AppStore, ToggleableCapability } from '../state/AppStore';
 import { PulseState } from '../model/PulseState';
+import { SensorCapabilities, SensorStatus } from '../model/SensorAvailability';
 
 class SensorService {
   private provider: SensorProvider = new MockSensorProvider();
   private spo2Provider: SpO2Provider = new MockSpO2Provider();
 
   start(store: AppStore): void {
-    store.applyReading(this.provider.read());
+    this.selectVariant(PulseState.Normal, store);
     store.capabilities = this.provider.capabilities();
     store.applySpO2(this.spo2Provider.read());
   }
 
   selectVariant(state: PulseState, store: AppStore): void {
-    (this.provider as MockSensorProvider).setVariant(state);
-    store.applyReading(this.provider.read());
+    this.provider.setVariant(state);
+    const reading = this.provider.read();
+    store.applyReading(reading);
+    this.spo2Provider.setPercent(reading.spo2);
+    store.applySpO2(this.spo2Provider.read());
+  }
+
+  setCapabilities(capabilities: SensorCapabilities, store: AppStore): void {
+    this.provider.setCapabilities(capabilities);
+    store.capabilities = capabilities;
+  }
+
+  toggleCapability(capability: ToggleableCapability, available: boolean, store: AppStore): void {
+    store.setCapability(capability, available);
+    this.provider.setCapabilities(store.capabilities);
+    if (capability === 'spo2') {
+      this.spo2Provider.setAvailable(available);
+      store.applySpO2(this.spo2Provider.read());
+    }
+    store.settings.fallDetection = store.capabilities.fallDetection === SensorStatus.Available;
   }
 
   release(): void {

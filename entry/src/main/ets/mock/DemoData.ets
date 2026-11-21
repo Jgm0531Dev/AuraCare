@@ -9,6 +9,11 @@ export const DEFAULT_CONTACTS: EmergencyContact[] = [
   { id: 'c4', name: 'Pedro Morales', role: 'Cónyuge', initials: 'PM', color: $r('app.color.contact_pm'), step: 0 }
 ];
 
+export const DEMO_NEW_CONTACT: EmergencyContact = {
+  id: 'c5', name: 'Lucía Fernández', role: 'Amiga', initials: 'LF',
+  color: $r('app.color.contact_lf'), step: 0
+};
+
 export const PULSE_VARIANTS: PulseVariant[] = [
   {
     state: PulseState.Normal,

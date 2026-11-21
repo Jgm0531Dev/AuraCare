@@ -6,12 +6,24 @@ import { DEFAULT_CAPABILITIES, PULSE_VARIANTS } from '../mock/DemoData';
 
 export class MockSensorProvider implements SensorProvider {
   private variant: PulseVariant = PULSE_VARIANTS[0];
+  private capabilitiesState: SensorCapabilities = {
+    heartRate: DEFAULT_CAPABILITIES.heartRate,
+    spo2: DEFAULT_CAPABILITIES.spo2,
+    temperature: DEFAULT_CAPABILITIES.temperature,
+    movement: DEFAULT_CAPABILITIES.movement,
+    location: DEFAULT_CAPABILITIES.location,
+    fallDetection: DEFAULT_CAPABILITIES.fallDetection
+  };
 
   setVariant(state: PulseState): void {
     const found: PulseVariant | undefined = PULSE_VARIANTS.find((item: PulseVariant) => item.state === state);
     if (found !== undefined) {
       this.variant = found;
     }
+  }
+
+  setCapabilities(capabilities: SensorCapabilities): void {
+    this.capabilitiesState = capabilities;
   }
 
   read(): SensorReading {
@@ -25,7 +37,7 @@ export class MockSensorProvider implements SensorProvider {
   }
 
   capabilities(): SensorCapabilities {
-    return DEFAULT_CAPABILITIES;
+    return this.capabilitiesState;
   }
 
   release(): void {
