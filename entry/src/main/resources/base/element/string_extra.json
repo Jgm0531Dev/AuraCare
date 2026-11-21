@@ -1,0 +1,12 @@
+{
+  "string": [
+    { "name": "extra_range_normal_compact", "value": "58-92 BPM" },
+    { "name": "extra_range_general_compact", "value": "60-100 BPM (general)" },
+    { "name": "extra_range_current_short", "value": "Ahora: %d BPM" },
+    { "name": "extra_range_resting_short", "value": "Reposo: 64 BPM" },
+    { "name": "extra_range_learned_short", "value": "Últimos 7 días" },
+    { "name": "extra_medical_empty_desc_short", "value": "Tipo de sangre, alergias y medicamentos." },
+    { "name": "extra_settings_exercise_desc", "value": "Pausa las alertas automáticas" },
+    { "name": "extra_settings_notice_desc", "value": "Reenvío si nadie responde" }
+  ]
+}
