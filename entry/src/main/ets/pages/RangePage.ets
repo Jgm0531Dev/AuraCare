@@ -3,6 +3,7 @@ import { ScreenScaffold } from '../components/ScreenScaffold';
 import { appStore } from '../state/AppStore';
 import { DesignTokens } from '../util/DesignTokens';
 import { dimens } from '../util/Dimens';
+import { Logger } from '../util/Logger';
 
 // REGISTRAR: Index.ets -> ArcSwiper() ya contiene RangePage() como tercera página; no añadir nada.
 
@@ -11,8 +12,11 @@ class CurvePoint {
   y: number = 0;
 }
 
+const TAG: string = 'RangePage';
 const CURVE_VIEW_WIDTH: number = 240;
 const CURVE_VIEW_HEIGHT: number = 70;
+const CURVE_WIDTH_CQW: number = 70;
+const CURVE_HEIGHT_CQW: number = 17;
 const CURVE_MIN_BPM: number = 40;
 const CURVE_MAX_BPM: number = 160;
 const PERSONAL_MIN_BPM: number = 58;
@@ -49,15 +53,32 @@ export struct RangePage {
     return this.isFirstUse() ? GENERAL_MAX_BPM : PERSONAL_MAX_BPM;
   }
 
-  private markerProgress(): number {
-    const raw: number = (appStore.bpm - this.rangeMin()) / (this.rangeMax() - this.rangeMin());
+  private progressFor(bpm: number): number {
+    const raw: number = (bpm - this.rangeMin()) / (this.rangeMax() - this.rangeMin());
     return Math.max(0, Math.min(1, raw));
   }
 
-  private markerPoint(): CurvePoint {
+  private markerProgress(): number {
+    return this.progressFor(appStore.bpm);
+  }
+
+  private markerPointFor(bpm: number): CurvePoint {
     const from: number = this.ratio(this.rangeMin());
     const to: number = this.ratio(this.rangeMax());
-    return this.curvePoint(from + (to - from) * this.markerProgress());
+    return this.curvePoint(from + (to - from) * this.progressFor(bpm));
+  }
+
+  private markerPoint(): CurvePoint {
+    return this.markerPointFor(appStore.bpm);
+  }
+
+  private logMarkerPositions(): void {
+    const samples: number[] = [50, 78, 92, 120];
+    samples.forEach((bpm: number): void => {
+      const point: CurvePoint = this.markerPointFor(bpm);
+      Logger.info(TAG,
+        `bpm=${bpm} rango=${this.rangeMin()}-${this.rangeMax()} progreso=${this.progressFor(bpm).toFixed(3)} x=${this.sx(point.x).toFixed(1)} y=${this.sy(point.y).toFixed(1)}`);
+    });
   }
 
   private curvePoint(t: number): CurvePoint {
@@ -76,11 +97,11 @@ export struct RangePage {
   }
 
   private sx(value: number): number {
-    return value * dimens.cqw(66) / CURVE_VIEW_WIDTH;
+    return value * dimens.cqw(CURVE_WIDTH_CQW) / CURVE_VIEW_WIDTH;
   }
 
   private sy(value: number): number {
-    return value * dimens.cqw(17) / CURVE_VIEW_HEIGHT;
+    return value * dimens.cqw(CURVE_HEIGHT_CQW) / CURVE_VIEW_HEIGHT;
   }
 
   private trackCommands(): string {
@@ -142,8 +163,11 @@ export struct RangePage {
           y: this.sy(this.markerPoint().y) - dimens.u(7)
         })
     }
-    .width(dimens.cqw(70))
-    .height(dimens.cqw(17))
+    .width(dimens.cqw(CURVE_WIDTH_CQW))
+    .height(dimens.cqw(CURVE_HEIGHT_CQW))
+    .onAppear((): void => {
+      this.logMarkerPositions();
+    })
   }
 
   @Builder
