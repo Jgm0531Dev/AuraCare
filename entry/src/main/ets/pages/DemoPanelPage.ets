@@ -1,6 +1,5 @@
 import { DesignTokens } from '../util/DesignTokens';
-import { DEBUG_LAYOUT, dimens } from '../util/Dimens';
-import { Logger } from '../util/Logger';
+import { dimens } from '../util/Dimens';
 import { appStore } from '../state/AppStore';
 import { sensorService } from '../service/SensorService';
 import { emergencyService } from '../service/EmergencyService';
@@ -8,6 +7,8 @@ import { AlertReason } from '../model/AlertReason';
 import { PulseState } from '../model/PulseState';
 import { SensorStatus } from '../model/SensorAvailability';
 import { ScreenScaffold } from '../components/ScreenScaffold';
+import { DEBUG_LAYOUT } from '../util/Dimens';
+import { Logger } from '../util/Logger';
 
 const TAG: string = 'DemoPanelPage';
 /** Distancia mínima (base 466) del deslizamiento a la derecha que cierra el panel. */
@@ -254,10 +255,23 @@ export struct DemoPanelPage {
             emergencyService.setContactsEmpty(value);
           })
 
-        this.wideButton('contactAdded', $r('app.string.demo_contact_added'),
-          $r('app.color.card'), (): void => {
-            emergencyService.addDemoContact();
-          })
+        Button() {
+          Text($r('app.string.demo_contact_added'))
+            .fontSize(dimens.u(DesignTokens.fsBody))
+            .fontColor($r('app.color.text_primary'))
+            .fontWeight(FontWeight.Bold)
+            .maxLines(2)
+            .textAlign(TextAlign.Center)
+        }
+        .width('100%')
+        .height(dimens.touchMin())
+        .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
+        .backgroundColor($r('app.color.card'))
+        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+        .onClick((): void => {
+          this.log('onClick contactAdded');
+          emergencyService.addDemoContact();
+        })
       }
       .width('100%')
       .alignItems(HorizontalAlign.Center)
