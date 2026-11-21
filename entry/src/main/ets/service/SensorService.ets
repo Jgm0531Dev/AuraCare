@@ -3,7 +3,8 @@ import { MockSensorProvider } from './MockSensorProvider';
 import { SpO2Provider } from './SpO2Provider';
 import { MockSpO2Provider } from './MockSpO2Provider';
 import { AppStore, ToggleableCapability } from '../state/AppStore';
-import { PulseState } from '../model/PulseState';
+import { PulseState, PulseVariant } from '../model/PulseState';
+import { PULSE_VARIANTS } from '../mock/DemoData';
 import { SensorCapabilities, SensorStatus } from '../model/SensorAvailability';
 
 class SensorService {
@@ -17,6 +18,12 @@ class SensorService {
   }
 
   selectVariant(state: PulseState, store: AppStore): void {
+    // Estado, color, marcador e inmovilidad del Monitor: applyReading no los toca.
+    const variant: PulseVariant | undefined =
+      PULSE_VARIANTS.find((item: PulseVariant): boolean => item.state === state);
+    if (variant !== undefined) {
+      store.selectVariant(variant);
+    }
     this.provider.setVariant(state);
     const reading = this.provider.read();
     store.applyReading(reading);

@@ -13,6 +13,8 @@ import { Logger } from '../util/Logger';
 const TAG: string = 'DemoPanelPage';
 /** Distancia mínima (base 466) del deslizamiento a la derecha que cierra el panel. */
 const SWIPE_CLOSE_BASE: number = 60;
+/** EXPERIMENTO: botón TEST y logs del panel sin depender de DEBUG_LAYOUT. Poner a false al cerrar el diagnóstico. */
+const PANEL_PROBE: boolean = true;
 
 @ComponentV2
 export struct DemoPanelPage {
@@ -32,9 +34,19 @@ export struct DemoPanelPage {
   }
 
   private log(event: string): void {
-    if (DEBUG_LAYOUT) {
+    if (DEBUG_LAYOUT || PANEL_PROBE) {
       Logger.info(TAG,
         `${event}: navStackDepth=${appStore.navStackDepth} overlayOpen=${appStore.dialogOpen} alert=${appStore.emergency.state}`);
+    }
+  }
+
+  /** Envoltura de cada onClick: log de entrada y excepciones que no se pierden en silencio. */
+  private runClick(name: string, action: () => void): void {
+    this.log(`onClick ${name}`);
+    try {
+      action();
+    } catch (err) {
+      Logger.error(TAG, `onClick ${name} falló`, err as Object);
     }
   }
 
@@ -70,9 +82,9 @@ export struct DemoPanelPage {
     .height(dimens.touchMin())
     .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
     .backgroundColor(color)
+    .padding({ left: dimens.u(DesignTokens.chipGapBase), right: dimens.u(DesignTokens.chipGapBase), top: 0, bottom: 0 })
     .onClick((): void => {
-      this.log(`onClick ${name}`);
-      onPress();
+      this.runClick(name, onPress);
     })
   }
 
@@ -92,9 +104,9 @@ export struct DemoPanelPage {
     .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
     .backgroundColor(color)
     .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+    .padding({ left: dimens.u(DesignTokens.chipGapBase), right: dimens.u(DesignTokens.chipGapBase), top: 0, bottom: 0 })
     .onClick((): void => {
-      this.log(`onClick ${name}`);
-      onPress();
+      this.runClick(name, onPress);
     })
   }
 
@@ -148,8 +160,9 @@ export struct DemoPanelPage {
         .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
         .accessibilityText($r('app.string.close'))
         .onClick((): void => {
-          this.log('onClick close');
-          this.close('button');
+          this.runClick('close', (): void => {
+            this.close('button');
+          });
         })
 
         Text($r('app.string.demo_panel_title'))
@@ -277,12 +290,15 @@ export struct DemoPanelPage {
         .backgroundColor($r('app.color.card'))
         .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
         .onClick((): void => {
-          this.log('onClick contactAdded');
-          emergencyService.addDemoContact();
+          this.runClick('contactAdded', (): void => {
+            emergencyService.addDemoContact();
+          });
         })
       }
       .width('100%')
       .alignItems(HorizontalAlign.Center)
+      // Holgura final: lo último no queda bajo el borde redondo ni bajo TEST.
+      .padding({ bottom: dimens.touchMin() })
     }
     .width('100%')
     .height('100%')
@@ -291,12 +307,30 @@ export struct DemoPanelPage {
 
   build() {
     NavDestination() {
-      ScreenScaffold({
-        logTag: 'DemoPanelPage',
-        bodyContent: (): void => {
-          this.demoBody();
+      Stack({ alignContent: Alignment.Bottom }) {
+        ScreenScaffold({
+          logTag: 'DemoPanelPage',
+          bodyContent: (): void => {
+            this.demoBody();
+          }
+        })
+
+        // EXPERIMENTO: botón nativo fuera de Scroll/List y de componentes propios.
+        if (PANEL_PROBE) {
+          Button('TEST')
+            .fontSize(dimens.u(DesignTokens.fsLabel))
+            .fontColor($r('app.color.text_primary'))
+            .backgroundColor($r('app.color.orange'))
+            .width(dimens.percent(DesignTokens.primaryButtonWidthPercent))
+            .height(dimens.touchMin())
+            .margin({ bottom: dimens.safeBottom() })
+            .onClick((): void => {
+              Logger.info(TAG, `TEST onClick navStackDepth=${appStore.navStackDepth}`);
+            })
         }
-      })
+      }
+      .width('100%')
+      .height('100%')
     }
     .hideTitleBar(true)
     .width('100%')
@@ -314,10 +348,11 @@ export struct DemoPanelPage {
           this.close('swipe-right');
         })
     )
-    // Sonda: confirma si los toques llegan al panel (solo con DEBUG_LAYOUT).
+    // Sonda: registra Down/Up en la raíz del panel (DEBUG_LAYOUT o PANEL_PROBE).
     .onTouch((event: TouchEvent): void => {
-      if (DEBUG_LAYOUT && event.type === TouchType.Down && event.touches.length > 0) {
-        Logger.info(TAG, `touchDown x=${event.touches[0].x.toFixed(0)} y=${event.touches[0].y.toFixed(0)}`);
+      if ((event.type === TouchType.Down || event.type === TouchType.Up) && event.changedTouches.length > 0) {
+        const touch: TouchObject = event.changedTouches[0];
+        this.log(`touch type=${event.type} x=${touch.x.toFixed(0)} y=${touch.y.toFixed(0)}`);
       }
     })
   }
