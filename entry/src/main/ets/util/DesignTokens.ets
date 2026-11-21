@@ -172,4 +172,12 @@ export class DesignTokens {
   static readonly keypadDisplayBase: number = 36;
   static readonly phoneMinDigits: number = 10;
   static readonly phoneMaxDigits: number = 15;
+  // Sensores: tarjetas de 2 líneas (alto fijo) y chip "Simulado".
+  static readonly sensorCardHeightBase: number = 88;
+  static readonly sensorCardPaddingBase: number = 12;
+  static readonly sensorCardGapBase: number = 8;
+  static readonly sensorIconBase: number = 28;
+  static readonly sensorChipFontBase: number = 22;
+  static readonly sensorChipPaddingBase: number = 6;
+  static readonly sensorUnavailableOpacity: number = 0.4;
 }

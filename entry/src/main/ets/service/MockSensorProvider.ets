@@ -5,6 +5,7 @@ import { PulseState, PulseVariant } from '../model/PulseState';
 import { DEFAULT_CAPABILITIES, PULSE_VARIANTS } from '../mock/DemoData';
 
 export class MockSensorProvider implements SensorProvider {
+  readonly isSimulated: boolean = true;
   private variant: PulseVariant = PULSE_VARIANTS[0];
   private capabilitiesState: SensorCapabilities = {
     heartRate: DEFAULT_CAPABILITIES.heartRate,

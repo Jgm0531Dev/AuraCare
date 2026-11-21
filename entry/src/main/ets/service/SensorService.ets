@@ -9,6 +9,11 @@ import { SensorCapabilities, SensorStatus } from '../model/SensorAvailability';
 
 class SensorService {
   private provider: SensorProvider = new MockSensorProvider();
+
+  /** Pulso y movimiento: simulados mientras el proveedor activo sea el Mock. */
+  isSimulated(): boolean {
+    return this.provider.isSimulated === true;
+  }
   private spo2Provider: SpO2Provider = new MockSpO2Provider();
 
   start(store: AppStore): void {
