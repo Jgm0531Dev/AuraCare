@@ -165,4 +165,11 @@ export class DesignTokens {
   static readonly alertRowPaddingBase: number = 12;
   static readonly alertGapBase: number = 8;
   static readonly alertHeaderBase: number = 64;
+  // Alta de contacto: teclado 3 x 4 (96 x 72 base) cabe en la cuerda inferior (≈322 base).
+  static readonly keypadKeyWidthBase: number = 96;
+  static readonly keypadKeyHeightBase: number = 72;
+  static readonly keypadGapBase: number = 4;
+  static readonly keypadDisplayBase: number = 36;
+  static readonly phoneMinDigits: number = 10;
+  static readonly phoneMaxDigits: number = 15;
 }

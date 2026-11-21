@@ -16,6 +16,7 @@ import { MedicalPage } from './MedicalPage';
 import { ContactsPage } from './ContactsPage';
 import { SettingsPage } from './SettingsPage';
 import { AlertRoute } from '../components/AlertRoute';
+import { AddContactPage } from './AddContactPage';
 import { DEMO_VISIBLE } from '../util/AppConfig';
 import { AlertConfirmDialog } from '../components/AlertConfirmDialog';
 
@@ -43,6 +44,10 @@ struct Index {
         `[trace] espejo actualizado (${event}): alert=${this.alertState} dialog=${this.dialogVisible} calling=${this.callingVisible} navStackDepth=${this.pathStack.size()}`);
     }
     this.syncRoutes(event);
+    if (event === 'addContact' && this.pathStack.getAllPathName().indexOf('addContact') < 0) {
+      this.pathStack.pushPath({ name: 'addContact' });
+      this.traceRoute('push addContact');
+    }
   }
 
   /** Alerta y diálogos como rutas: lo único que se dibuja encima de Navigation. */
@@ -94,6 +99,9 @@ struct Index {
     }
     sensorService.start(appStore);
     emergencyService.start(appStore);
+    if (context !== undefined) {
+      emergencyService.loadContacts(context);
+    }
     this.unsubscribeUi = emergencyService.onUiChange((event: string): void => {
       this.syncFromStore(event);
     });
@@ -138,6 +146,13 @@ struct Index {
           } finally {
             this.syncNavDepth('demoPop');
           }
+        }
+      })
+    } else if (name === 'addContact') {
+      AddContactPage({
+        onDone: (): void => {
+          this.pathStack.removeByName('addContact');
+          this.syncNavDepth('addContactDone');
         }
       })
     } else if (name === 'alert') {
@@ -304,9 +319,6 @@ struct Index {
           ArcSwiper() {
             MonitorPage({
               onOpenDemo: (): void => {
-                if (!DEMO_VISIBLE) {
-                  return;
-                }
                 // Badge y pulsación larga pueden disparar dos veces: un solo panel en la pila.
                 if (this.pathStack.getAllPathName().indexOf('demo') >= 0) {
                   this.syncNavDepth('demoPush ignorado (ya abierto)');

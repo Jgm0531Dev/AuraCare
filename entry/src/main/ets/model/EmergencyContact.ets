@@ -5,4 +5,6 @@ export interface EmergencyContact {
   initials: string;
   color: Resource;
   step: number;
+  /** Solo contactos reales (añadidos por el usuario); los de ejemplo no tienen. */
+  phone?: string;
 }

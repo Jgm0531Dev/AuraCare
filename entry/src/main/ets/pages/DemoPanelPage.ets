@@ -10,6 +10,9 @@ import { ScreenScaffold } from '../components/ScreenScaffold';
 import { DemoChoiceButton } from '../components/DemoChoiceButton';
 import { DEBUG_LAYOUT } from '../util/Dimens';
 import { Logger } from '../util/Logger';
+import { RELEASE_MODE } from '../util/AppConfig';
+import { isUserContact } from '../service/ContactRepository';
+import { EmergencyContact } from '../model/EmergencyContact';
 
 const TAG: string = 'DemoPanelPage';
 /** Distancia mínima (base 466) del deslizamiento a la derecha que cierra el panel. */
@@ -375,34 +378,37 @@ export struct DemoPanelPage {
             emergencyService.updateAutoAlert(appStore);
           })
 
-        // Contactos de ejemplo (apagado por defecto: el estado inicial real es vacío).
-        this.hardwareSwitch($r('app.string.demo_sample_contacts'), appStore.contacts.length > 0,
-          (value: boolean): void => {
-            emergencyService.setContactsEmpty(!value);
-          })
-        this.hardwareSwitch($r('app.string.demo_medical_sample'), extraDemoState.medicalSample,
-          (value: boolean): void => {
-            extraDemoState.medicalSample = value;
-          })
+        // Datos de ejemplo: no existen con RELEASE_MODE (el panel sigue accesible a revisores).
+        if (!RELEASE_MODE) {
+          // Contactos de ejemplo (apagado por defecto: el estado inicial real es vacío).
+          this.hardwareSwitch($r('app.string.demo_sample_contacts'), this.showingSampleContacts(),
+            (value: boolean): void => {
+              emergencyService.setContactsEmpty(!value);
+            })
+          this.hardwareSwitch($r('app.string.demo_medical_sample'), extraDemoState.medicalSample,
+            (value: boolean): void => {
+              extraDemoState.medicalSample = value;
+            })
 
-        Button() {
-          Text($r('app.string.demo_contact_added'))
-            .fontSize(dimens.u(DesignTokens.fsBody))
-            .fontColor($r('app.color.text_primary'))
-            .fontWeight(FontWeight.Bold)
-            .maxLines(2)
-            .textAlign(TextAlign.Center)
+          Button() {
+            Text($r('app.string.demo_contact_added'))
+              .fontSize(dimens.u(DesignTokens.fsBody))
+              .fontColor($r('app.color.text_primary'))
+              .fontWeight(FontWeight.Bold)
+              .maxLines(2)
+              .textAlign(TextAlign.Center)
+          }
+          .width('100%')
+          .height(dimens.touchMin())
+          .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
+          .backgroundColor($r('app.color.card'))
+          .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+          .onClick((): void => {
+            this.runClick('contactAdded', (): void => {
+              emergencyService.addDemoContact();
+            });
+          })
         }
-        .width('100%')
-        .height(dimens.touchMin())
-        .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
-        .backgroundColor($r('app.color.card'))
-        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
-        .onClick((): void => {
-          this.runClick('contactAdded', (): void => {
-            emergencyService.addDemoContact();
-          });
-        })
       }
       .width('100%')
       .alignItems(HorizontalAlign.Center)
@@ -469,6 +475,10 @@ export struct DemoPanelPage {
   /** Resalta solo el estado activo del store (instancia única appStore). */
   private pulseColor(state: PulseState, active: Resource): Resource {
     return appStore.pulseState === state ? active : $r('app.color.card');
+  }
+
+  private showingSampleContacts(): boolean {
+    return appStore.contacts.some((contact: EmergencyContact): boolean => !isUserContact(contact));
   }
 
   private modeColor(mode: string): Resource {

@@ -255,7 +255,7 @@ export struct AlertSentScreen {
           })
         } else {
           this.actionButton($r('app.string.add_contact'), $r('app.color.green'), (): void => {
-            emergencyService.openDialog(DialogKind.AddContact);
+            emergencyService.requestAddContact();
           })
         }
       }

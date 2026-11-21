@@ -163,7 +163,8 @@ export class AppStore {
         role: contact.role,
         initials: contact.initials,
         color: contact.color,
-        step: step
+        step: step,
+        phone: contact.phone
       };
     });
   }

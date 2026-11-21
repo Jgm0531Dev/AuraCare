@@ -128,7 +128,7 @@ export struct ContactsPage {
       .accessibilityText($r('app.string.a11y_call_contact', contact.name))
       .onClick((): void => {
         this.cancelPress();
-        emergencyService.showCalling(contact.name);
+        emergencyService.callContact(contact);
       })
     }
     .width('100%')
@@ -233,7 +233,7 @@ export struct ContactsPage {
       .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
       .margin({ bottom: dimens.u(DesignTokens.contactsFooterBottomBase) })
       .onClick((): void => {
-        emergencyService.openDialog(DialogKind.AddContact);
+        emergencyService.requestAddContact();
       })
     }
   }

@@ -240,10 +240,8 @@ export struct MonitorPage {
         .width(dimens.u(DesignTokens.monitorLiveRowWidthBase))
         .height(dimens.u(DesignTokens.monitorLiveRowBase))
         .justifyContent(FlexAlign.Center)
+        // Acceso de revisores: la pulsación larga de 3 s abre el panel también con RELEASE_MODE.
         .gesture(LongPressGesture({ duration: 3000 }).onAction((_event: GestureEvent): void => {
-          if (!DEMO_VISIBLE) {
-            return;
-          }
           this.onOpenDemo();
         }))
 

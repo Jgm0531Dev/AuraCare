@@ -13,6 +13,11 @@ import { AlertState } from '../model/Alert';
 import { vibrationService } from './VibrationService';
 import { Logger } from '../util/Logger';
 import { DEBUG_LAYOUT } from '../util/Dimens';
+import { call } from '@kit.TelephonyKit';
+import { Context } from '@kit.AbilityKit';
+import { EmergencyContact } from '../model/EmergencyContact';
+import { DEFAULT_CONTACTS } from '../mock/DemoData';
+import { MAX_CONTACTS, USER_CONTACT_PREFIX, contactRepository, initialsOf, isUserContact } from './ContactRepository';
 
 const TAG: string = 'EmergencyService';
 const TOAST_MS: number = 2000;
@@ -189,6 +194,7 @@ class EmergencyService {
       }
       if (kind === DialogKind.RemoveContact) {
         store.removeContact(store.contactToRemoveId);
+        contactRepository.save(store.contacts);
         this.syncOnWay();
         return;
       }
@@ -226,8 +232,68 @@ class EmergencyService {
     if (store === undefined) {
       return;
     }
-    store.setContactsEmpty(empty);
+    // Interruptor "Contactos de ejemplo": encendido = ejemplos (no se guardan);
+    // apagado = vuelven los contactos reales guardados.
+    store.contacts = empty ? contactRepository.load() : DEFAULT_CONTACTS.slice();
+    store.resetContactResponse();
     this.syncOnWay();
+  }
+
+  /** Al iniciar la app: abre preferences y carga los contactos reales guardados. */
+  loadContacts(context: Context): void {
+    const store: AppStore | undefined = this.store;
+    if (store === undefined) {
+      return;
+    }
+    contactRepository.init(context);
+    store.contacts = contactRepository.load();
+  }
+
+  /** Abre el flujo propio de alta (ruta 'addContact' en Index). */
+  requestAddContact(): void {
+    this.emitUi('addContact');
+  }
+
+  /** Alta real: relación como nombre + teléfono. Devuelve false si no se pudo. */
+  addUserContact(name: string, phone: string): boolean {
+    const store: AppStore | undefined = this.store;
+    if (store === undefined) {
+      return false;
+    }
+    // Si había ejemplos en pantalla, se parte de los reales guardados.
+    const base: EmergencyContact[] = store.contacts.every(isUserContact) ? store.contacts.slice() : contactRepository.load();
+    if (base.length >= MAX_CONTACTS) {
+      Logger.warn(TAG, 'addUserContact: máximo de contactos alcanzado');
+      return false;
+    }
+    base.push({
+      id: `${USER_CONTACT_PREFIX}${Date.now()}`,
+      name: name,
+      role: phone,
+      initials: initialsOf(name),
+      color: contactRepository.colorFor(base.length),
+      step: 0,
+      phone: phone
+    });
+    store.contacts = base;
+    contactRepository.save(base);
+    this.syncOnWay();
+    return true;
+  }
+
+  /** Llamar: marcador del sistema con el número (call.makeCall, sin permiso). Ejemplos: simulado. */
+  callContact(contact: EmergencyContact): void {
+    const phone: string | undefined = contact.phone;
+    if (phone === undefined || phone.length === 0) {
+      this.showCalling(contact.name);
+      return;
+    }
+    call.makeCall(phone).then((): void => {
+      Logger.info(TAG, 'makeCall: marcador abierto');
+    }).catch((err: Object): void => {
+      Logger.error(TAG, 'makeCall falló', err);
+      this.showCalling(contact.name);
+    });
   }
 
   addDemoContact(): void {
