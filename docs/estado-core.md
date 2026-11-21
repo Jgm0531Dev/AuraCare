@@ -17,6 +17,7 @@ Actualizado: 2026-11-20 22:2x
 
 - Pantalla Sensores (5 tarjetas, variantes, chip Simulado). Rango con escala única (Canvas).
 - Release v1.0.0: util/AppConfig.ets controla todo (RELEASE_MODE=true, DEBUG_LAYOUT=false, DEMO_VISIBLE=false, REVIEWER_DEMO_GESTURE=false); Logger.info silenciado en release; "SIMULADO" en el Monitor con el Mock; vendor/versionCode/descripciones reales; tags de plantilla fuera. Permisos: solo VIBRATE.
+- ALERTS_SIMULATED=true: Alerta enviada muestra "Aviso simulado", aviso naranja fijo (hasta 3 líneas), "Ubicación simulada" y contactos "Simulado". versionCode confirmado en 1.
 
 ## En curso
 - Verificación visual del usuario en el previsualizador (anillo, halo, Alerta enviada).
