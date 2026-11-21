@@ -239,9 +239,6 @@ export struct DemoPanelPage {
           this.choiceButton('modeOffline', $r('app.string.demo_offline'), this.modeColor('offline'), (): void => {
             appStore.mode = 'offline';
           })
-          this.choiceButton('modeFirstUse', $r('app.string.demo_first_use'), this.modeColor('first-use'), (): void => {
-            appStore.mode = 'first-use';
-          })
           this.choiceButton('modeLive', $r('app.string.monitor_live'), this.modeColor('live'), (): void => {
             appStore.mode = 'live';
             emergencyService.updateAutoAlert(appStore);
@@ -249,6 +246,13 @@ export struct DemoPanelPage {
         }
         .width('100%')
         .margin({ top: dimens.cqw(DesignTokens.demoSectionGapCqw) })
+
+        // Primer uso como interruptor: encendido = 'first-use'; apagado vuelve a 'live'.
+        this.hardwareSwitch($r('app.string.demo_first_use'), appStore.mode === 'first-use',
+          (value: boolean): void => {
+            appStore.mode = value ? 'first-use' : 'live';
+            emergencyService.updateAutoAlert(appStore);
+          })
 
         this.hardwareSwitch($r('app.string.demo_contacts_empty'), appStore.contacts.length === 0,
           (value: boolean): void => {
