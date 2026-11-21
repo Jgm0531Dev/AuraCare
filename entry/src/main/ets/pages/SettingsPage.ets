@@ -1,4 +1,4 @@
-import { PageHeader } from '../components/PageHeader';
+import { ExtraPageHeader } from '../components/ExtraPageHeader';
 import { ScreenScaffold } from '../components/ScreenScaffold';
 import { SensorStatus } from '../model/SensorAvailability';
 import { vibrationService } from '../service/VibrationService';
@@ -96,7 +96,10 @@ export struct SettingsPage {
 
   @Builder
   settingsHeader() {
-    PageHeader({ title: $r('app.string.page_settings'), icon: $r('app.string.icon_sensor') })
+    ExtraPageHeader({
+      title: $r('app.string.page_settings'),
+      symbol: $r('sys.symbol.gearshape')
+    })
   }
 
   @Builder
@@ -156,8 +159,7 @@ export struct SettingsPage {
         })
 
         Row() {
-          this.rowContent($r('app.string.notice_time'),
-            $r('app.string.next_notice', appStore.settings.noticeMinutes))
+          this.rowContent($r('app.string.notice_time'), $r('app.string.extra_settings_notice_desc'))
           this.badge(this.noticeLabel())
         }
         .width('100%')
@@ -174,8 +176,7 @@ export struct SettingsPage {
         })
 
         Row() {
-          this.rowContent($r('app.string.exercise_mode'),
-            appStore.settings.exerciseMode ? $r('app.string.exercise_paused') : $r('app.string.exercise_frequent'))
+          this.rowContent($r('app.string.exercise_mode'), $r('app.string.extra_settings_exercise_desc'))
           Toggle({ type: ToggleType.Switch, isOn: appStore.settings.exerciseMode })
             .selectedColor($r('app.color.green'))
             .onChange((value: boolean): void => {
@@ -253,7 +254,7 @@ export struct SettingsPage {
         })
       }
       .width('100%')
-      .padding({ top: dimens.cqw(2.4), bottom: dimens.cqw(2.4) })
+      .padding({ top: dimens.cqw(2.4), bottom: dimens.cqw(6) })
     }
     .width('100%')
     .height('100%')
