@@ -28,7 +28,7 @@ export struct CountdownAlertScreen {
     if (reason === AlertReason.SosManual) {
       return $r('app.string.reason_sos');
     }
-    return $r('app.string.reason_pulse', CRITICAL_REASON_BPM);
+    return $r('app.string.reason_pulse', appStore.alertBpm > 0 ? appStore.alertBpm : CRITICAL_REASON_BPM);
   }
 
   @Local haloLow: boolean = false;
@@ -68,7 +68,7 @@ export struct CountdownAlertScreen {
 
       CountdownRing({
         value: appStore.emergencySeconds,
-        total: this.isSos() ? 5 : 30,
+        total: appStore.emergencyTotalSeconds > 0 ? appStore.emergencyTotalSeconds : (this.isSos() ? 5 : 30),
         critical: this.ringCritical()
       })
 

@@ -52,6 +52,10 @@ export class AppStore {
   @Trace autoAlerts: boolean = true;
   @Trace movementImmobile: boolean = false;
   @Trace emergencySeconds: number = 0;
+  /** Total de la cuenta en curso, desde la máquina (respeta x5/x10 vía Clock). */
+  @Trace emergencyTotalSeconds: number = 0;
+  /** BPM congelado al disparar la alerta: el motivo no cambia con lecturas posteriores. */
+  @Trace alertBpm: number = 0;
   @Trace nextNoticeSeconds: number = 0;
   @Trace onWay: boolean = false;
   @Trace toastMessage: Resource = $r('app.string.alert_cancelled');

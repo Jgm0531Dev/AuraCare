@@ -79,6 +79,8 @@ export interface EmergencySnapshot {
   reason: AlertReason;
   startedAt: number;
   remainingSeconds: number;
+  /** Duración total de la cuenta actual (30 ¿Estás bien?, 5 Pidiendo ayuda, 0 sin cuenta). */
+  totalSeconds: number;
   autoAlertFired: boolean;
   nextNoticeSeconds: number;
   onWayPaused: boolean;
@@ -211,6 +213,8 @@ export class EmergencyMachine {
       reason: this.reason,
       startedAt: this.startedAt,
       remainingSeconds: this.remainingSeconds,
+      totalSeconds: this.state === AlertState.AreYouOk ? ARE_YOU_OK_SECONDS :
+        (this.state === AlertState.SosCountdown ? SOS_COUNTDOWN_SECONDS : 0),
       autoAlertFired: this.autoAlertFired,
       nextNoticeSeconds: this.nextNoticeSeconds,
       onWayPaused: this.onWay,

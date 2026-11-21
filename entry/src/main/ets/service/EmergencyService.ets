@@ -9,6 +9,7 @@ import {
 } from '../state/EmergencyMachine';
 import { AppStore, DialogKind } from '../state/AppStore';
 import { AlertReason } from '../model/AlertReason';
+import { AlertState } from '../model/Alert';
 import { vibrationService } from './VibrationService';
 import { Logger } from '../util/Logger';
 import { DEBUG_LAYOUT } from '../util/Dimens';
@@ -285,9 +286,16 @@ class EmergencyService {
       return;
     }
     vibrationService.vibrate(snapshot.vibration);
+    const previous: AlertState = store.emergency.state;
+    if (store.emergency.state === AlertState.None && snapshot.state !== AlertState.None) {
+      // Motivo congelado en el disparo.
+      store.alertBpm = store.bpm;
+    }
     store.emergency.state = snapshot.state;
     store.emergency.reason = snapshot.reason;
     store.emergencySeconds = snapshot.remainingSeconds;
+    store.emergencyTotalSeconds = snapshot.totalSeconds;
+    this.logCountdown(snapshot, previous);
     store.nextNoticeSeconds = snapshot.nextNoticeSeconds;
     store.onWay = snapshot.onWayPaused;
     this.emitUi('snapshot');
@@ -306,6 +314,20 @@ class EmergencyService {
       this.showToast($r('app.string.alert_cancelled'));
     } else if (snapshot.effect === EmergencyEffect.ToastNotified && this.canNotify(store)) {
       this.showToast($r('app.string.contacts_notified'));
+    }
+  }
+
+  /** Progreso del anillo en 30, 20, 10 y 0 s (uno por segundo de cuenta, escalado por el Clock). */
+  private logCountdown(snapshot: EmergencySnapshot, previous: AlertState): void {
+    if (snapshot.state === AlertState.AlertSent &&
+        (previous === AlertState.AreYouOk || previous === AlertState.SosCountdown)) {
+      Logger.info(TAG, `anillo ${previous}: restante=0s progreso=0.00 -> alert-sent`);
+      return;
+    }
+    const s: number = snapshot.remainingSeconds;
+    if (snapshot.totalSeconds > 0 && (s === 30 || s === 20 || s === 10 || s === 0 || s === snapshot.totalSeconds)) {
+      Logger.info(TAG,
+        `anillo ${snapshot.state}: restante=${s}s total=${snapshot.totalSeconds}s progreso=${(s / snapshot.totalSeconds).toFixed(2)}`);
     }
   }
 
