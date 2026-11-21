@@ -9,11 +9,11 @@ import { ScreenScaffold } from '../components/ScreenScaffold';
 import { HeartRateGauge } from '../components/HeartRateGauge';
 import { SensorChip } from '../components/SensorChip';
 import { SosButton } from '../components/SosButton';
+import { DEMO_VISIBLE } from '../util/AppConfig';
 
 const TAG: string = 'MonitorPage';
 
-/** Acceso directo al panel demo en el previsualizador; poner a false para producción. */
-export const DEMO_VISIBLE: boolean = true;
+// DEMO_VISIBLE vive en util/AppConfig.ets (se apaga con RELEASE_MODE).
 
 @ComponentV2
 export struct MonitorPage {
@@ -241,6 +241,9 @@ export struct MonitorPage {
         .height(dimens.u(DesignTokens.monitorLiveRowBase))
         .justifyContent(FlexAlign.Center)
         .gesture(LongPressGesture({ duration: 3000 }).onAction((_event: GestureEvent): void => {
+          if (!DEMO_VISIBLE) {
+            return;
+          }
           this.onOpenDemo();
         }))
 

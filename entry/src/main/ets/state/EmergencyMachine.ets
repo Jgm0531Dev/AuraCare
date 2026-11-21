@@ -177,6 +177,19 @@ export class EmergencyMachine {
   private noticeTimer: number | undefined = undefined;
   private listeners: EmergencyListener[] = [];
   private readonly clock: Clock;
+  /** Traza inyectable (sin imports de UI): el servicio decide si la envía a hilog. */
+  private tracer: (message: string) => void = (_message: string): void => {};
+
+  setTracer(tracer: (message: string) => void): void {
+    this.tracer = tracer;
+  }
+
+  /** Demo: salta a `¿Estás bien?` desde cualquier estado, sin pasar por sensores. */
+  forceAreYouOk(reason: AlertReason): void {
+    this.tracer(`forceAreYouOk reason=${reason} from=${this.state}`);
+    this.clearAutoAlertTimer();
+    this.enterAreYouOk(reason);
+  }
 
   constructor(clock: Clock) {
     this.clock = clock;
@@ -222,9 +235,12 @@ export class EmergencyMachine {
       this.autoAlertFired = false;
       this.clearAutoAlertTimer();
     }
-    if (this.state !== AlertState.None || this.autoAlertFired || !this.canAutoAlert(context)) {
+    const allowed: boolean = this.canAutoAlert(context);
+    this.tracer(`updateAutoAlert key=${guardKey} bpm=${context.bpm} state=${this.state} fired=${this.autoAlertFired} allowed=${allowed}`);
+    if (this.state !== AlertState.None || this.autoAlertFired || !allowed) {
       return;
     }
+    this.tracer(`autoAlert timer armado ${AUTO_ALERT_DELAY_MS} ms (escala del Clock)`);
     this.autoAlertTimer = this.clock.setTimeout((): void => {
       this.autoAlertTimer = undefined;
       if (this.state !== AlertState.None) {
@@ -275,6 +291,7 @@ export class EmergencyMachine {
   }
 
   dispatch(event: EmergencyEvent, payload: EmergencyDispatch = {}): void {
+    this.tracer(`dispatch event=${event} reason=${payload.reason ?? '-'} state=${this.state}`);
     switch (event) {
       case EmergencyEvent.AutoAlert:
         if (this.state === AlertState.None) {
@@ -352,6 +369,7 @@ export class EmergencyMachine {
     this.clearSosHoldTimer();
     this.clearCountdownTimer();
     this.clearNoticeTimer();
+    this.tracer(`transición ${this.state} -> are-you-ok reason=${reason}`);
     this.state = AlertState.AreYouOk;
     this.reason = reason;
     this.startedAt = this.clock.now();
@@ -366,6 +384,7 @@ export class EmergencyMachine {
     this.clearSosHoldTimer();
     this.clearCountdownTimer();
     this.clearNoticeTimer();
+    this.tracer(`transición ${this.state} -> sos-countdown`);
     this.state = AlertState.SosCountdown;
     this.reason = AlertReason.SosManual;
     this.startedAt = this.clock.now();
@@ -379,6 +398,7 @@ export class EmergencyMachine {
   private enterAlertSent(effect: EmergencyEffect = EmergencyEffect.AlertSent): void {
     this.clearCountdownTimer();
     this.clearSosHoldTimer();
+    this.tracer(`transición ${this.state} -> alert-sent`);
     this.state = AlertState.AlertSent;
     this.startedAt = this.clock.now();
     this.remainingSeconds = 0;
@@ -396,6 +416,7 @@ export class EmergencyMachine {
     this.clearSosHoldTimer();
     this.clearCountdownTimer();
     this.clearNoticeTimer();
+    this.tracer(`transición ${this.state} -> none effect=${effect}`);
     this.state = AlertState.None;
     this.remainingSeconds = 0;
     this.setEffect(effect);

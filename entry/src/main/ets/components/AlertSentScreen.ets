@@ -92,39 +92,40 @@ export struct AlertSentScreen {
     return `${minuteText}:${secondText}`;
   }
 
+  /** Fila de alto fijo (72 base): avatar 48, nombre en una línea y estado a la derecha. */
   @Builder
-  contactCard(contact: EmergencyContact) {
-    Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
+  contactRow(contact: EmergencyContact) {
+    Row({ space: dimens.u(DesignTokens.alertGapBase) }) {
       Text(contact.initials)
-        .fontSize(dimens.u(DesignTokens.fsLabel))
+        .fontSize(dimens.u(DesignTokens.fsMin))
         .fontColor($r('app.color.text_primary'))
         .fontWeight(FontWeight.Bold)
-        .width(dimens.cqw(DesignTokens.alertContactAvatarCqw))
-        .height(dimens.cqw(DesignTokens.alertContactAvatarCqw))
-        .borderRadius(dimens.cqw(DesignTokens.alertContactAvatarCqw / 2))
+        .width(dimens.u(DesignTokens.alertAvatarBase))
+        .height(dimens.u(DesignTokens.alertAvatarBase))
+        .borderRadius(dimens.u(DesignTokens.alertAvatarBase / 2))
         .backgroundColor(contact.color)
         .textAlign(TextAlign.Center)
+        .maxLines(1)
+        .flexShrink(0)
 
-      Column({ space: dimens.vp(DesignTokens.thinBorder) }) {
-        Text(contact.name)
-          .fontSize(dimens.u(DesignTokens.fsLabel))
-          .fontColor($r('app.color.text_primary'))
-        Text(contact.role)
-          .fontSize(dimens.u(DesignTokens.fsMin))
-          .fontColor($r('app.color.muted'))
-      }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
+      Text(contact.name)
+        .fontSize(dimens.u(DesignTokens.fsLabel))
+        .fontColor($r('app.color.text_primary'))
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .layoutWeight(1)
 
       Text(this.contactStatus(contact))
         .fontSize(dimens.u(DesignTokens.fsMin))
         .fontColor(this.statusColor(contact))
+        .maxLines(1)
+        .flexShrink(0)
     }
     .width('100%')
-    .height(dimens.cqw(DesignTokens.alertContactRowMinHeightCqw))
+    .height(dimens.u(DesignTokens.alertRowHeightBase))
     .padding({
-      left: dimens.cqw(DesignTokens.infoCardPaddingCqw),
-      right: dimens.cqw(DesignTokens.infoCardPaddingCqw)
+      left: dimens.u(DesignTokens.alertRowPaddingBase),
+      right: dimens.u(DesignTokens.alertRowPaddingBase)
     })
     .backgroundColor($r('app.color.card'))
     .borderRadius(dimens.radiusCard())
@@ -132,154 +133,149 @@ export struct AlertSentScreen {
   }
 
   @Builder
-  alertBody() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      Column({ space: dimens.cqw(DesignTokens.alertContentGapCqw) }) {
-        Column({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-          Row({ space: dimens.cqw(DesignTokens.headerGapCqw) }) {
-            Text(this.headerIcon())
-              .fontSize(dimens.u(DesignTokens.fsSubtitle))
-              .fontColor(this.headerColor())
-              .fontWeight(FontWeight.Bold)
-            Text(this.title())
-              .fontSize(dimens.u(DesignTokens.alertSentHeader))
-              .fontColor($r('app.color.text_primary'))
-              .fontWeight(FontWeight.Bold)
-          }
-          .width('100%')
-          .justifyContent(FlexAlign.Center)
+  actionButton(label: Resource, color: Resource, onPress: () => void) {
+    Button() {
+      Text(label)
+        .fontSize(dimens.u(DesignTokens.fsLabel))
+        .fontColor($r('app.color.text_primary'))
+        .fontWeight(FontWeight.Bold)
+        .maxLines(1)
+    }
+    .width('100%')
+    .height(dimens.primaryButtonHeight())
+    .borderRadius(dimens.primaryButtonHeight() / 2)
+    .backgroundColor(color)
+    .onClick(onPress)
+  }
 
-          Text(this.headerReason())
-            .fontSize(dimens.u(DesignTokens.fsMin))
-            .fontColor($r('app.color.text_secondary'))
-            .textAlign(TextAlign.Center)
-            .width('100%')
-        }
-        .width('100%')
-
-        Scroll() {
-          Column({ space: dimens.cqw(DesignTokens.alertContentGapCqw) }) {
-            if (this.isOffline()) {
-              Text($r('app.string.offline_banner'))
-                .fontSize(dimens.u(DesignTokens.fsMin))
-                .fontColor($r('app.color.orange'))
-              if (this.hasContacts()) {
-                Text($r('app.string.retrying'))
-                  .fontSize(dimens.u(DesignTokens.fsMin))
-                  .fontColor($r('app.color.muted'))
-              }
-            }
-
-            Column({ space: dimens.vp(DesignTokens.thinBorder) }) {
-              Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-                Text($r('app.string.frequency'))
-                  .fontSize(dimens.u(DesignTokens.fsLabel))
-                  .fontColor($r('app.color.text_secondary'))
-                Text($r('app.string.frequency_value', appStore.bpm))
-                  .fontSize(dimens.u(DesignTokens.fsLabel))
-                  .fontColor($r('app.color.text_primary'))
-              }
-              .width('100%')
-              Text($r('app.string.location_shared'))
-                .fontSize(dimens.u(DesignTokens.fsMin))
-                .fontColor($r('app.color.green'))
-            }
-            .width(dimens.cqw(DesignTokens.alertCardWidthCqw))
-            .padding(dimens.cqw(DesignTokens.infoCardPaddingCqw))
-            .backgroundColor($r('app.color.card'))
-            .borderRadius(dimens.radiusCard())
-
-            if (this.hasContacts()) {
-              List({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-                ForEach(appStore.contacts, (contact: EmergencyContact): void => {
-                  ListItem() {
-                    this.contactCard(contact)
-                  }
-                }, (contact: EmergencyContact): string => contact.id)
-              }
-              .width(dimens.cqw(DesignTokens.alertCardWidthCqw))
-              .height(dimens.cqw(DesignTokens.alertContactRowMinHeightCqw * 2.6))
-              .scrollBar(BarState.Off)
-              .edgeEffect(EdgeEffect.Fade)
-
-              Column({ space: dimens.vp(DesignTokens.thinBorder) }) {
-                Text($r('app.string.next_notice_time', this.formatTime(appStore.nextNoticeSeconds)))
-                  .fontSize(dimens.u(DesignTokens.fsMin))
-                  .fontColor($r('app.color.text_secondary'))
-                if (this.onWayName().length > 0) {
-                  Text($r('app.string.on_way_name', this.onWayName()))
-                    .fontSize(dimens.u(DesignTokens.fsMin))
-                    .fontColor($r('app.color.green'))
-                }
-              }
-              .width(dimens.cqw(DesignTokens.alertCardWidthCqw))
-            } else {
-              Text($r('app.string.no_emergency_contacts'))
-                .fontSize(dimens.u(DesignTokens.fsMin))
-                .fontColor($r('app.color.muted'))
-            }
-
-            Column({ space: dimens.vp(DesignTokens.countdownButtonGap) }) {
-              Button() {
-                Text($r('app.string.call_911_action'))
-                  .fontSize(dimens.u(DesignTokens.fsLabel))
-                  .fontColor($r('app.color.text_primary'))
-              }
-              .width(dimens.cqw(DesignTokens.alertCardWidthCqw))
-              .height(dimens.primaryButtonHeight())
-              .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
-              .backgroundColor($r('app.color.red'))
-              .onClick((): void => {
-                emergencyService.openDialog(DialogKind.Call911);
-              })
-
-              if (this.hasContacts()) {
-                Button() {
-                  Text($r('app.string.cancel_alert'))
-                    .fontSize(dimens.u(DesignTokens.fsLabel))
-                    .fontColor($r('app.color.text_primary'))
-                }
-                .width(dimens.cqw(DesignTokens.alertCardWidthCqw))
-                .height(dimens.primaryButtonHeight())
-                .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
-                .backgroundColor($r('app.color.card'))
-                .onClick((): void => {
-                  emergencyService.openDialog(DialogKind.CancelAlert);
-                })
-              } else {
-                Button() {
-                  Text($r('app.string.add_contact'))
-                    .fontSize(dimens.u(DesignTokens.fsLabel))
-                    .fontColor($r('app.color.text_primary'))
-                }
-                .width(dimens.cqw(DesignTokens.alertCardWidthCqw))
-                .height(dimens.primaryButtonHeight())
-                .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
-                .backgroundColor($r('app.color.green'))
-                .onClick((): void => {
-                  emergencyService.openDialog(DialogKind.AddContact);
-                })
-              }
-            }
-            .width(dimens.cqw(DesignTokens.alertCardWidthCqw))
-          }
-          .width('100%')
-          .alignItems(HorizontalAlign.Center)
-        }
-        .width('100%')
-        .layoutWeight(1)
+  /** Cabecera fija: check + título en una fila y el motivo en una línea. */
+  @Builder
+  alertHeader() {
+    Column() {
+      Row({ space: dimens.u(DesignTokens.alertGapBase) }) {
+        Text(this.headerIcon())
+          .fontSize(dimens.u(DesignTokens.fsBody))
+          .fontColor(this.headerColor())
+          .fontWeight(FontWeight.Bold)
+          .maxLines(1)
+        Text(this.title())
+          .fontSize(dimens.u(DesignTokens.alertSentHeader))
+          .fontColor($r('app.color.text_primary'))
+          .fontWeight(FontWeight.Bold)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
-      .width('100%')
-      .height('100%')
+      .justifyContent(FlexAlign.Center)
+
+      Text(this.headerReason())
+        .fontSize(dimens.u(DesignTokens.fsMin))
+        .fontColor($r('app.color.text_secondary'))
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .textAlign(TextAlign.Center)
+        .width('100%')
     }
     .width('100%')
     .height('100%')
+    .justifyContent(FlexAlign.Center)
+  }
+
+  /** Cuerpo con scroll en flujo normal: sin posiciones absolutas ni márgenes negativos. */
+  @Builder
+  alertBody() {
+    Scroll() {
+      Column({ space: dimens.u(DesignTokens.alertGapBase) }) {
+        if (this.isOffline()) {
+          Text($r('app.string.offline_banner'))
+            .fontSize(dimens.u(DesignTokens.fsMin))
+            .fontColor($r('app.color.orange'))
+            .textAlign(TextAlign.Center)
+          if (this.hasContacts()) {
+            Text($r('app.string.retrying'))
+              .fontSize(dimens.u(DesignTokens.fsMin))
+              .fontColor($r('app.color.muted'))
+          }
+        }
+
+        // Tarjeta compacta de BPM y ubicación (alto fijo, en flujo).
+        Column() {
+          Row({ space: dimens.u(DesignTokens.chipGapBase) }) {
+            Text($r('app.string.frequency'))
+              .fontSize(dimens.u(DesignTokens.fsLabel))
+              .fontColor($r('app.color.text_secondary'))
+              .maxLines(1)
+            Text($r('app.string.frequency_value', appStore.bpm))
+              .fontSize(dimens.u(DesignTokens.fsLabel))
+              .fontColor($r('app.color.text_primary'))
+              .fontWeight(FontWeight.Bold)
+              .maxLines(1)
+          }
+          Text($r('app.string.location_shared'))
+            .fontSize(dimens.u(DesignTokens.fsMin))
+            .fontColor($r('app.color.green'))
+            .maxLines(1)
+        }
+        .width('100%')
+        .height(dimens.u(DesignTokens.alertRowHeightBase))
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor($r('app.color.card'))
+        .borderRadius(dimens.radiusCard())
+
+        if (this.hasContacts()) {
+          ForEach(appStore.contacts, (contact: EmergencyContact): void => {
+            this.contactRow(contact)
+          }, (contact: EmergencyContact): string => `${contact.id}-${contact.step}`)
+
+          Text($r('app.string.next_notice_time', this.formatTime(appStore.nextNoticeSeconds)))
+            .fontSize(dimens.u(DesignTokens.fsMin))
+            .fontColor($r('app.color.text_secondary'))
+            .maxLines(1)
+          if (this.onWayName().length > 0) {
+            Text($r('app.string.on_way_name', this.onWayName()))
+              .fontSize(dimens.u(DesignTokens.fsMin))
+              .fontColor($r('app.color.green'))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+        } else {
+          Text($r('app.string.no_emergency_contacts'))
+            .fontSize(dimens.u(DesignTokens.fsMin))
+            .fontColor($r('app.color.muted'))
+            .textAlign(TextAlign.Center)
+        }
+
+        this.actionButton($r('app.string.call_911_action'), $r('app.color.red'), (): void => {
+          emergencyService.openDialog(DialogKind.Call911);
+        })
+        if (this.hasContacts()) {
+          this.actionButton($r('app.string.cancel_alert'), $r('app.color.card'), (): void => {
+            emergencyService.openDialog(DialogKind.CancelAlert);
+          })
+        } else {
+          this.actionButton($r('app.string.add_contact'), $r('app.color.green'), (): void => {
+            emergencyService.openDialog(DialogKind.AddContact);
+          })
+        }
+      }
+      .width(dimens.percent(DesignTokens.primaryButtonWidthPercent))
+      .alignItems(HorizontalAlign.Center)
+      // Holgura final: el último botón no queda bajo el borde redondo.
+      .padding({ bottom: dimens.u(DesignTokens.alertRowHeightBase) })
+    }
+    .width('100%')
+    .height('100%')
+    .scrollBar(BarState.Off)
+    .align(Alignment.Top)
   }
 
   build() {
     ScreenScaffold({
       logTag: 'AlertSentScreen',
       scaffoldBackground: $r('app.color.surface_deep'),
+      headerHeightBase: DesignTokens.alertHeaderBase,
+      headerContent: (): void => {
+        this.alertHeader();
+      },
       bodyContent: (): void => {
         this.alertBody();
       }

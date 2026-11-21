@@ -7,12 +7,15 @@ import { AlertReason } from '../model/AlertReason';
 import { PulseState } from '../model/PulseState';
 import { SensorStatus } from '../model/SensorAvailability';
 import { ScreenScaffold } from '../components/ScreenScaffold';
+import { DemoChoiceButton } from '../components/DemoChoiceButton';
 import { DEBUG_LAYOUT } from '../util/Dimens';
 import { Logger } from '../util/Logger';
 
 const TAG: string = 'DemoPanelPage';
 /** Distancia mínima (base 466) del deslizamiento a la derecha que cierra el panel. */
 const SWIPE_CLOSE_BASE: number = 60;
+/** EXPERIMENTO: botón TEST y logs del panel sin depender de DEBUG_LAYOUT. Poner a false al cerrar el diagnóstico. */
+const PANEL_PROBE: boolean = false;
 
 @ComponentV2
 export struct DemoPanelPage {
@@ -32,9 +35,19 @@ export struct DemoPanelPage {
   }
 
   private log(event: string): void {
-    if (DEBUG_LAYOUT) {
+    if (DEBUG_LAYOUT || PANEL_PROBE) {
       Logger.info(TAG,
         `${event}: navStackDepth=${appStore.navStackDepth} overlayOpen=${appStore.dialogOpen} alert=${appStore.emergency.state}`);
+    }
+  }
+
+  /** Envoltura de cada onClick: log de entrada y excepciones que no se pierden en silencio. */
+  private runClick(name: string, action: () => void): void {
+    this.log(`onClick ${name}`);
+    try {
+      action();
+    } catch (err) {
+      Logger.error(TAG, `onClick ${name} falló`, err as Object);
     }
   }
 
@@ -70,9 +83,9 @@ export struct DemoPanelPage {
     .height(dimens.touchMin())
     .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
     .backgroundColor(color)
+    .padding({ left: dimens.u(DesignTokens.chipGapBase), right: dimens.u(DesignTokens.chipGapBase), top: 0, bottom: 0 })
     .onClick((): void => {
-      this.log(`onClick ${name}`);
-      onPress();
+      this.runClick(name, onPress);
     })
   }
 
@@ -92,9 +105,9 @@ export struct DemoPanelPage {
     .borderRadius(dimens.cqw(DesignTokens.demoButtonRadiusCqw))
     .backgroundColor(color)
     .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+    .padding({ left: dimens.u(DesignTokens.chipGapBase), right: dimens.u(DesignTokens.chipGapBase), top: 0, bottom: 0 })
     .onClick((): void => {
-      this.log(`onClick ${name}`);
-      onPress();
+      this.runClick(name, onPress);
     })
   }
 
@@ -148,8 +161,9 @@ export struct DemoPanelPage {
         .border({ width: dimens.thinBorder(), color: $r('app.color.border') })
         .accessibilityText($r('app.string.close'))
         .onClick((): void => {
-          this.log('onClick close');
-          this.close('button');
+          this.runClick('close', (): void => {
+            this.close('button');
+          });
         })
 
         Text($r('app.string.demo_panel_title'))
@@ -160,31 +174,72 @@ export struct DemoPanelPage {
           .fontSize(dimens.u(DesignTokens.fsLabel))
           .fontColor($r('app.color.muted'))
 
-        this.sectionTitle($r('app.string.demo_time_speed_title', this.timeScale))
+        // Inline (no @Builder): el texto se re-evalúa al cambiar timeScale.
+        Text($r('app.string.demo_time_speed_title', this.timeScale))
+          .fontSize(dimens.u(DesignTokens.fsBody))
+          .fontColor($r('app.color.text_primary'))
+          .fontWeight(FontWeight.Medium)
+          .margin({ top: dimens.cqw(DesignTokens.demoSectionGapCqw) })
         Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-          this.choiceButton('speed1', $r('app.string.demo_speed_1'), this.speedColor(1), (): void => {
-            this.selectSpeed(1);
-          })
-          this.choiceButton('speed5', $r('app.string.demo_speed_5'), this.speedColor(5), (): void => {
-            this.selectSpeed(5);
-          })
-          this.choiceButton('speed10', $r('app.string.demo_speed_10'), this.speedColor(10), (): void => {
-            this.selectSpeed(10);
-          })
+          DemoChoiceButton({
+            label: $r('app.string.demo_speed_1'),
+            color: this.speedColor(1),
+            onPress: (): void => {
+              this.runClick('speed1', (): void => {
+                this.selectSpeed(1);
+              });
+            }
+          }).layoutWeight(1)
+          DemoChoiceButton({
+            label: $r('app.string.demo_speed_5'),
+            color: this.speedColor(5),
+            onPress: (): void => {
+              this.runClick('speed5', (): void => {
+                this.selectSpeed(5);
+              });
+            }
+          }).layoutWeight(1)
+          DemoChoiceButton({
+            label: $r('app.string.demo_speed_10'),
+            color: this.speedColor(10),
+            onPress: (): void => {
+              this.runClick('speed10', (): void => {
+                this.selectSpeed(10);
+              });
+            }
+          }).layoutWeight(1)
         }
         .width('100%')
 
         this.sectionTitle($r('app.string.demo_pulse_selector'))
         Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-          this.choiceButton('pulseNormal', $r('app.string.demo_state_normal'), $r('app.color.green'), (): void => {
-            this.selectPulse(PulseState.Normal);
-          })
-          this.choiceButton('pulseElevated', $r('app.string.demo_state_elevated'), $r('app.color.orange'), (): void => {
-            this.selectPulse(PulseState.Elevated);
-          })
-          this.choiceButton('pulseCritical', $r('app.string.demo_state_critical'), $r('app.color.red'), (): void => {
-            this.selectPulse(PulseState.Critical);
-          })
+          DemoChoiceButton({
+            label: $r('app.string.demo_state_normal'),
+            color: this.pulseColor(PulseState.Normal, $r('app.color.green')),
+            onPress: (): void => {
+              this.runClick('pulseNormal', (): void => {
+                this.selectPulse(PulseState.Normal);
+              });
+            }
+          }).layoutWeight(1)
+          DemoChoiceButton({
+            label: $r('app.string.demo_state_elevated'),
+            color: this.pulseColor(PulseState.Elevated, $r('app.color.orange')),
+            onPress: (): void => {
+              this.runClick('pulseElevated', (): void => {
+                this.selectPulse(PulseState.Elevated);
+              });
+            }
+          }).layoutWeight(1)
+          DemoChoiceButton({
+            label: $r('app.string.demo_state_critical'),
+            color: this.pulseColor(PulseState.Critical, $r('app.color.red')),
+            onPress: (): void => {
+              this.runClick('pulseCritical', (): void => {
+                this.selectPulse(PulseState.Critical);
+              });
+            }
+          }).layoutWeight(1)
         }
         .width('100%')
 
@@ -209,40 +264,106 @@ export struct DemoPanelPage {
         })
         this.sectionTitle($r('app.string.demo_reason_title'))
         // Etiquetas largas: una por fila y la elegida resaltada.
-        this.wideButton('reasonPulse', $r('app.string.demo_reason_pulse'),
-          this.reasonColor(AlertReason.PulsoCritico), (): void => {
-            this.reason = AlertReason.PulsoCritico;
-          })
-        this.wideButton('reasonFall', $r('app.string.demo_reason_fall'),
-          this.reasonColor(AlertReason.Caida), (): void => {
-            this.reason = AlertReason.Caida;
-          })
-        this.wideButton('reasonSos', $r('app.string.demo_reason_sos'),
-          this.reasonColor(AlertReason.SosManual), (): void => {
-            this.reason = AlertReason.SosManual;
-          })
+        DemoChoiceButton({
+          label: $r('app.string.demo_reason_pulse'),
+          color: this.reasonColor(AlertReason.PulsoCritico),
+          wide: true,
+          onPress: (): void => {
+            this.runClick('reasonPulse', (): void => {
+              this.reason = AlertReason.PulsoCritico;
+            });
+          }
+        })
+        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+        DemoChoiceButton({
+          label: $r('app.string.demo_reason_fall'),
+          color: this.reasonColor(AlertReason.Caida),
+          wide: true,
+          onPress: (): void => {
+            this.runClick('reasonFall', (): void => {
+              this.reason = AlertReason.Caida;
+            });
+          }
+        })
+        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+        DemoChoiceButton({
+          label: $r('app.string.demo_reason_sos'),
+          color: this.reasonColor(AlertReason.SosManual),
+          wide: true,
+          onPress: (): void => {
+            this.runClick('reasonSos', (): void => {
+              this.reason = AlertReason.SosManual;
+            });
+          }
+        })
+        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
 
-        this.wideButton('simulateAlert', $r('app.string.demo_simulate_alert'),
-          $r('app.color.accion_principal'), (): void => {
-            emergencyService.simulateAlert(this.reason);
-          })
-        this.wideButton('viewAlertSent', $r('app.string.demo_view_alert_sent'),
-          $r('app.color.card'), (): void => {
-            emergencyService.viewAlertSent();
-          })
-        this.wideButton('contactResponse', $r('app.string.demo_simulate_contact_response'),
-          $r('app.color.card'), (): void => {
-            emergencyService.advanceContactResponse();
-          })
+        DemoChoiceButton({
+          label: $r('app.string.demo_simulate_alert'),
+          color: $r('app.color.accion_principal'),
+          wide: true,
+          onPress: (): void => {
+            this.runClick('simulateAlert', (): void => {
+              emergencyService.simulateAlert(this.reason);
+            });
+          }
+        })
+        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+        // Transición directa en la máquina: no depende de sensores ni de la auto-alerta.
+        DemoChoiceButton({
+          label: $r('app.string.demo_fire_now'),
+          color: $r('app.color.accion_principal'),
+          wide: true,
+          onPress: (): void => {
+            this.runClick('fireAlertNow', (): void => {
+              emergencyService.fireAlertNow(this.reason);
+            });
+          }
+        })
+        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+        DemoChoiceButton({
+          label: $r('app.string.demo_view_alert_sent'),
+          color: $r('app.color.card'),
+          wide: true,
+          onPress: (): void => {
+            this.runClick('viewAlertSent', (): void => {
+              emergencyService.viewAlertSent();
+            });
+          }
+        })
+        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
+        DemoChoiceButton({
+          label: $r('app.string.demo_simulate_contact_response'),
+          color: $r('app.color.card'),
+          wide: true,
+          onPress: (): void => {
+            this.runClick('contactResponse', (): void => {
+              emergencyService.advanceContactResponse();
+            });
+          }
+        })
+        .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
 
         Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-          this.choiceButton('modeOffline', $r('app.string.demo_offline'), this.modeColor('offline'), (): void => {
-            appStore.mode = 'offline';
-          })
-          this.choiceButton('modeLive', $r('app.string.monitor_live'), this.modeColor('live'), (): void => {
-            appStore.mode = 'live';
+          DemoChoiceButton({
+            label: $r('app.string.demo_offline'),
+            color: this.modeColor('offline'),
+            onPress: (): void => {
+              this.runClick('modeOffline', (): void => {
+                appStore.mode = 'offline';
+              });
+            }
+          }).layoutWeight(1)
+          DemoChoiceButton({
+            label: $r('app.string.monitor_live'),
+            color: this.modeColor('live'),
+            onPress: (): void => {
+              this.runClick('modeLive', (): void => {
+                appStore.mode = 'live';
             emergencyService.updateAutoAlert(appStore);
-          })
+              });
+            }
+          }).layoutWeight(1)
         }
         .width('100%')
         .margin({ top: dimens.cqw(DesignTokens.demoSectionGapCqw) })
@@ -254,9 +375,10 @@ export struct DemoPanelPage {
             emergencyService.updateAutoAlert(appStore);
           })
 
-        this.hardwareSwitch($r('app.string.demo_contacts_empty'), appStore.contacts.length === 0,
+        // Contactos de ejemplo (apagado por defecto: el estado inicial real es vacío).
+        this.hardwareSwitch($r('app.string.demo_sample_contacts'), appStore.contacts.length > 0,
           (value: boolean): void => {
-            emergencyService.setContactsEmpty(value);
+            emergencyService.setContactsEmpty(!value);
           })
         this.hardwareSwitch($r('app.string.demo_medical_sample'), extraDemoState.medicalSample,
           (value: boolean): void => {
@@ -277,12 +399,15 @@ export struct DemoPanelPage {
         .backgroundColor($r('app.color.card'))
         .margin({ top: dimens.cqw(DesignTokens.demoGapCqw) })
         .onClick((): void => {
-          this.log('onClick contactAdded');
-          emergencyService.addDemoContact();
+          this.runClick('contactAdded', (): void => {
+            emergencyService.addDemoContact();
+          });
         })
       }
       .width('100%')
       .alignItems(HorizontalAlign.Center)
+      // Holgura final: lo último no queda bajo el borde redondo ni bajo TEST.
+      .padding({ bottom: dimens.touchMin() })
     }
     .width('100%')
     .height('100%')
@@ -291,12 +416,30 @@ export struct DemoPanelPage {
 
   build() {
     NavDestination() {
-      ScreenScaffold({
-        logTag: 'DemoPanelPage',
-        bodyContent: (): void => {
-          this.demoBody();
+      Stack({ alignContent: Alignment.Bottom }) {
+        ScreenScaffold({
+          logTag: 'DemoPanelPage',
+          bodyContent: (): void => {
+            this.demoBody();
+          }
+        })
+
+        // EXPERIMENTO: botón nativo fuera de Scroll/List y de componentes propios.
+        if (PANEL_PROBE) {
+          Button('TEST')
+            .fontSize(dimens.u(DesignTokens.fsLabel))
+            .fontColor($r('app.color.text_primary'))
+            .backgroundColor($r('app.color.orange'))
+            .width(dimens.percent(DesignTokens.primaryButtonWidthPercent))
+            .height(dimens.touchMin())
+            .margin({ bottom: dimens.safeBottom() })
+            .onClick((): void => {
+              Logger.info(TAG, `TEST onClick navStackDepth=${appStore.navStackDepth}`);
+            })
         }
-      })
+      }
+      .width('100%')
+      .height('100%')
     }
     .hideTitleBar(true)
     .width('100%')
@@ -314,12 +457,18 @@ export struct DemoPanelPage {
           this.close('swipe-right');
         })
     )
-    // Sonda: confirma si los toques llegan al panel (solo con DEBUG_LAYOUT).
+    // Sonda: registra Down/Up en la raíz del panel (DEBUG_LAYOUT o PANEL_PROBE).
     .onTouch((event: TouchEvent): void => {
-      if (DEBUG_LAYOUT && event.type === TouchType.Down && event.touches.length > 0) {
-        Logger.info(TAG, `touchDown x=${event.touches[0].x.toFixed(0)} y=${event.touches[0].y.toFixed(0)}`);
+      if ((event.type === TouchType.Down || event.type === TouchType.Up) && event.changedTouches.length > 0) {
+        const touch: TouchObject = event.changedTouches[0];
+        this.log(`touch type=${event.type} x=${touch.x.toFixed(0)} y=${touch.y.toFixed(0)}`);
       }
     })
+  }
+
+  /** Resalta solo el estado activo del store (instancia única appStore). */
+  private pulseColor(state: PulseState, active: Resource): Resource {
+    return appStore.pulseState === state ? active : $r('app.color.card');
   }
 
   private modeColor(mode: string): Resource {
@@ -332,11 +481,13 @@ export struct DemoPanelPage {
 
   private selectSpeed(speed: number): void {
     this.timeScale = speed;
+    this.log(`timeScale=${this.timeScale}`);
     emergencyService.setTimeScale(speed);
   }
 
   private selectPulse(state: PulseState): void {
     sensorService.selectVariant(state, appStore);
+    this.log(`pulseState=${appStore.pulseState}`);
     appStore.mode = 'live';
     emergencyService.updateAutoAlert(appStore);
   }

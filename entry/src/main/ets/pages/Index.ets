@@ -15,8 +15,8 @@ import { RangePage } from './RangePage';
 import { MedicalPage } from './MedicalPage';
 import { ContactsPage } from './ContactsPage';
 import { SettingsPage } from './SettingsPage';
-import { CountdownAlertScreen } from '../components/CountdownAlertScreen';
-import { AlertSentScreen } from '../components/AlertSentScreen';
+import { AlertRoute } from '../components/AlertRoute';
+import { DEMO_VISIBLE } from '../util/AppConfig';
 import { AlertConfirmDialog } from '../components/AlertConfirmDialog';
 
 @Entry
@@ -27,6 +27,64 @@ struct Index {
   @Local debugScale: number = dimens.scale;
   @Local debugRoot: string = debugRootSize(dimens.rootWidthVp, dimens.rootHeightVp);
   private indicator: ArcDotIndicator = new ArcDotIndicator();
+  // Espejos locales: Index no re-renderiza con lecturas directas de appStore (comprobado en
+  // previewer.log: disableSwipe y las capas de alerta no reaccionaban). Los alimenta EmergencyService.
+  @Local alertState: AlertState = AlertState.None;
+  @Local dialogVisible: boolean = false;
+  @Local callingVisible: boolean = false;
+  private unsubscribeUi: () => void = (): void => {};
+
+  private syncFromStore(event: string): void {
+    this.alertState = appStore.emergency.state;
+    this.dialogVisible = appStore.dialogOpen;
+    this.callingVisible = appStore.callingVisible;
+    if (DEBUG_LAYOUT) {
+      Logger.info('Index',
+        `[trace] espejo actualizado (${event}): alert=${this.alertState} dialog=${this.dialogVisible} calling=${this.callingVisible} navStackDepth=${this.pathStack.size()}`);
+    }
+    this.syncRoutes(event);
+  }
+
+  /** Alerta y diálogos como rutas: lo único que se dibuja encima de Navigation. */
+  private syncRoutes(event: string): void {
+    try {
+      const wantAlert: boolean = this.alertState !== AlertState.None;
+      if (wantAlert && this.pathStack.getAllPathName().indexOf('alert') < 0) {
+        // La alerta toma la pantalla: se cierra el panel demo o lo que esté abierto.
+        this.pathStack.clear(false);
+        this.pathStack.pushPath({ name: 'alert' }, false);
+        this.traceRoute(`push alert (${event})`);
+      } else if (!wantAlert && this.pathStack.getAllPathName().indexOf('alert') >= 0) {
+        this.pathStack.removeByName('alert');
+        this.traceRoute(`remove alert (${event})`);
+      }
+      const hasDialog: boolean = this.pathStack.getAllPathName().indexOf('dialog') >= 0;
+      if (this.dialogVisible && !hasDialog) {
+        this.pathStack.pushPath({ name: 'dialog' }, false);
+        this.traceRoute(`push dialog (${event})`);
+      } else if (!this.dialogVisible && hasDialog) {
+        this.pathStack.removeByName('dialog');
+        this.traceRoute(`remove dialog (${event})`);
+      }
+    } catch (err) {
+      Logger.error('Index', `syncRoutes falló (${event})`, err as Object);
+    } finally {
+      appStore.navStackDepth = this.pathStack.size();
+    }
+  }
+
+  private traceRoute(action: string): void {
+    if (DEBUG_LAYOUT) {
+      Logger.info('Index',
+        `[trace] ruta ${action}: pila=[${this.pathStack.getAllPathName().join(',')}]`);
+    }
+  }
+
+  private logOverlay(name: string): void {
+    if (DEBUG_LAYOUT) {
+      Logger.info('Index', `[trace] capa visible: ${name} alert=${this.alertState}`);
+    }
+  }
 
   aboutToAppear(): void {
     dimens.init(this.getUIContext());
@@ -36,6 +94,10 @@ struct Index {
     }
     sensorService.start(appStore);
     emergencyService.start(appStore);
+    this.unsubscribeUi = emergencyService.onUiChange((event: string): void => {
+      this.syncFromStore(event);
+    });
+    this.syncFromStore('aboutToAppear');
     this.indicator
       .arcDirection(ArcDirection.THREE_CLOCK_DIRECTION)
       .itemColor($r('app.color.gray_636366'))
@@ -78,6 +140,23 @@ struct Index {
           }
         }
       })
+    } else if (name === 'alert') {
+      AlertRoute()
+    } else if (name === 'dialog') {
+      NavDestination() {
+        this.confirmDialog()
+      }
+      .hideTitleBar(true)
+      .width('100%')
+      .height('100%')
+      .backgroundColor($r('app.color.watch_background'))
+      .onShown((): void => {
+        this.logOverlay(`confirmDialog kind=${appStore.dialogKind}`);
+      })
+      .onBackPressed((): boolean => {
+        emergencyService.closeDialog();
+        return true;
+      })
     } else {
       NavDestination() {
         Column() {
@@ -94,6 +173,7 @@ struct Index {
   }
 
   aboutToDisappear(): void {
+    this.unsubscribeUi();
     emergencyService.dispose();
     sensorService.release();
   }
@@ -148,6 +228,9 @@ struct Index {
     if (appStore.dialogKind === DialogKind.RemoveContact) {
       return $r('app.string.icon_warning');
     }
+    if (appStore.dialogKind === DialogKind.AddContact) {
+      return $r('app.string.icon_phone');
+    }
     return $r('app.string.icon_check');
   }
 
@@ -164,7 +247,7 @@ struct Index {
       icon: this.dialogIcon(),
       tone: this.dialogTone(),
       hideCancel: appStore.dialogKind === DialogKind.AddContact,
-      showSimulationNote: appStore.dialogKind !== DialogKind.AddContact,
+      showSimulationNote: appStore.dialogKind === DialogKind.Call911 && DEMO_VISIBLE,
       onConfirm: (): void => {
         emergencyService.confirmDialog();
       },
@@ -221,6 +304,9 @@ struct Index {
           ArcSwiper() {
             MonitorPage({
               onOpenDemo: (): void => {
+                if (!DEMO_VISIBLE) {
+                  return;
+                }
                 // Badge y pulsación larga pueden disparar dos veces: un solo panel en la pila.
                 if (this.pathStack.getAllPathName().indexOf('demo') >= 0) {
                   this.syncNavDepth('demoPush ignorado (ya abierto)');
@@ -246,7 +332,7 @@ struct Index {
           .width('100%')
           .height('100%')
           .vertical(true)
-          .disableSwipe(appStore.emergency.state !== AlertState.None || appStore.dialogOpen)
+          .disableSwipe(this.alertState !== AlertState.None || this.dialogVisible)
           .indicator(this.indicator)
           .index(this.activePage)
           .onChange((index: number) => {
@@ -271,24 +357,9 @@ struct Index {
       .width('100%')
       .height('100%')
 
-      if (appStore.emergency.state === AlertState.AreYouOk ||
-          appStore.emergency.state === AlertState.SosCountdown) {
-        CountdownAlertScreen()
-          .width('100%')
-          .height('100%')
-      }
+      // Alerta y diálogos ya no van aquí: son rutas 'alert' y 'dialog' (ver syncRoutes).
 
-      if (appStore.emergency.state === AlertState.AlertSent) {
-        AlertSentScreen()
-          .width('100%')
-          .height('100%')
-      }
-
-      if (appStore.dialogOpen) {
-        this.confirmDialog()
-      }
-
-      if (appStore.callingVisible) {
+      if (this.callingVisible) {
         Column() {
           Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
             Text($r('app.string.calling_prefix'))
