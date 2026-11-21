@@ -7,27 +7,48 @@ import { Logger } from '../util/Logger';
 
 // REGISTRAR: Index.ets -> ArcSwiper() ya contiene RangePage() como tercera página; no añadir nada.
 
-class CurvePoint {
+class ArcPoint {
   x: number = 0;
   y: number = 0;
 }
 
 const TAG: string = 'RangePage';
-const CURVE_VIEW_WIDTH: number = 240;
-const CURVE_VIEW_HEIGHT: number = 70;
-const CURVE_WIDTH_CQW: number = 70;
-const CURVE_HEIGHT_CQW: number = 17;
-const CURVE_MIN_BPM: number = 40;
-const CURVE_MAX_BPM: number = 160;
+/** Dominio único de la barra: 30-120 BPM -> 0-1 (58-92 queda centrado). */
+const DOMAIN_MIN_BPM: number = 30;
+const DOMAIN_MAX_BPM: number = 120;
 const PERSONAL_MIN_BPM: number = 58;
 const PERSONAL_MAX_BPM: number = 92;
 const GENERAL_MIN_BPM: number = 60;
 const GENERAL_MAX_BPM: number = 100;
-const ORANGE_MAX_BPM: number = 110;
-const LOW_BPM: number = 45;
+/** Fuera del rango por menos de esto: naranja; por esto o más: rojo. */
+const WARN_MARGIN_BPM: number = 20;
+// Geometría en base 466 (todo pasa por dimens.u).
+const BAR_WIDTH_BASE: number = 326;   // 70 % del reloj (mínimo pedido: 64 %)
+const BAR_HEIGHT_BASE: number = 70;
+const BAR_STROKE_BASE: number = 14;
+const BAR_SAG_BASE: number = 34;      // profundidad de la "sonrisa"
+const MARKER_BASE: number = 18;
+const MARKER_BORDER_BASE: number = 2;
+const HERO_BASE: number = 40;
+const ARC_STEPS: number = 48;
+
+/** ÚNICA conversión BPM -> fracción (tramo y marcador usan esta misma función). */
+export function bpmToFraccion(bpm: number): number {
+  const raw: number = (bpm - DOMAIN_MIN_BPM) / (DOMAIN_MAX_BPM - DOMAIN_MIN_BPM);
+  return Math.max(0, Math.min(1, raw));
+}
 
 @ComponentV2
 export struct RangePage {
+  private readonly settings: RenderingContextSettings = new RenderingContextSettings(true);
+  private readonly context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings);
+
+  aboutToAppear(): void {
+    [50, 78, 92, 104, 120, 132].forEach((bpm: number): void => {
+      Logger.info(TAG, `bpm=${bpm} fraccion=${bpmToFraccion(bpm).toFixed(3)}`);
+    });
+  }
+
   @Builder
   rangeHeader() {
     ExtraPageHeader({
@@ -40,11 +61,6 @@ export struct RangePage {
     return appStore.mode === 'first-use';
   }
 
-  private ratio(bpm: number): number {
-    const raw: number = (bpm - CURVE_MIN_BPM) / (CURVE_MAX_BPM - CURVE_MIN_BPM);
-    return Math.max(0.02, Math.min(0.98, raw));
-  }
-
   private rangeMin(): number {
     return this.isFirstUse() ? GENERAL_MIN_BPM : PERSONAL_MIN_BPM;
   }
@@ -53,131 +69,116 @@ export struct RangePage {
     return this.isFirstUse() ? GENERAL_MAX_BPM : PERSONAL_MAX_BPM;
   }
 
-  private progressFor(bpm: number): number {
-    const raw: number = (bpm - this.rangeMin()) / (this.rangeMax() - this.rangeMin());
-    return Math.max(0, Math.min(1, raw));
-  }
-
-  private markerProgress(): number {
-    return this.progressFor(appStore.bpm);
-  }
-
-  private markerPointFor(bpm: number): CurvePoint {
-    const from: number = this.ratio(this.rangeMin());
-    const to: number = this.ratio(this.rangeMax());
-    return this.curvePoint(from + (to - from) * this.progressFor(bpm));
-  }
-
-  private markerPoint(): CurvePoint {
-    return this.markerPointFor(appStore.bpm);
-  }
-
-  private logMarkerPositions(): void {
-    const samples: number[] = [50, 78, 92, 120];
-    samples.forEach((bpm: number): void => {
-      const point: CurvePoint = this.markerPointFor(bpm);
-      Logger.info(TAG,
-        `bpm=${bpm} rango=${this.rangeMin()}-${this.rangeMax()} progreso=${this.progressFor(bpm).toFixed(3)} x=${this.sx(point.x).toFixed(1)} y=${this.sy(point.y).toFixed(1)}`);
-    });
-  }
-
-  private curvePoint(t: number): CurvePoint {
-    const inverse: number = 1 - t;
-    const point: CurvePoint = new CurvePoint();
-    point.x = inverse * inverse * 20 + 2 * inverse * t * 120 + t * t * 220;
-    point.y = inverse * inverse * 52 + 2 * inverse * t * 16 + t * t * 52;
+  /** ÚNICO punto sobre la curva (vp, origen arriba-izquierda del Canvas). Bezier cuadrática simétrica. */
+  private puntoEnArco(fraccion: number): ArcPoint {
+    const t: number = Math.max(0, Math.min(1, fraccion));
+    const pad: number = dimens.u(MARKER_BASE / 2 + MARKER_BORDER_BASE);
+    const x0: number = pad;
+    const x2: number = dimens.u(BAR_WIDTH_BASE) - pad;
+    const yEnds: number = pad;
+    const yControl: number = pad + dimens.u(BAR_SAG_BASE) * 2;
+    const point: ArcPoint = new ArcPoint();
+    point.x = x0 + (x2 - x0) * t;   // control en el centro: x es lineal en t
+    point.y = (1 - t) * (1 - t) * yEnds + 2 * (1 - t) * t * yControl + t * t * yEnds;
     return point;
   }
 
-  private curveTangent(t: number): CurvePoint {
-    const tangent: CurvePoint = new CurvePoint();
-    tangent.x = 2 * ((1 - t) * (120 - 20) + t * (220 - 120));
-    tangent.y = 2 * ((1 - t) * (16 - 52) + t * (52 - 16));
-    return tangent;
-  }
-
-  private sx(value: number): number {
-    return value * dimens.cqw(CURVE_WIDTH_CQW) / CURVE_VIEW_WIDTH;
-  }
-
-  private sy(value: number): number {
-    return value * dimens.cqw(CURVE_HEIGHT_CQW) / CURVE_VIEW_HEIGHT;
-  }
-
-  private trackCommands(): string {
-    return `M ${this.sx(20).toFixed(2)} ${this.sy(52).toFixed(2)} Q ${this.sx(120).toFixed(2)} ${this.sy(16).toFixed(2)} ${this.sx(220).toFixed(2)} ${this.sy(52).toFixed(2)}`;
-  }
-
-  private highlightCommands(): string {
-    const from: number = this.ratio(this.rangeMin());
-    const to: number = this.ratio(this.rangeMax());
-    const start: CurvePoint = this.curvePoint(from);
-    const end: CurvePoint = this.curvePoint(to);
-    const tangent: CurvePoint = this.curveTangent(from);
-    const span: number = to - from;
-    const control: CurvePoint = new CurvePoint();
-    control.x = start.x + span * tangent.x / 2;
-    control.y = start.y + span * tangent.y / 2;
-    return `M ${this.sx(start.x).toFixed(2)} ${this.sy(start.y).toFixed(2)} Q ${this.sx(control.x).toFixed(2)} ${this.sy(control.y).toFixed(2)} ${this.sx(end.x).toFixed(2)} ${this.sy(end.y).toFixed(2)}`;
-  }
-
-  private markerColor(): Resource {
+  private stateColor(): Resource {
     if (this.isFirstUse()) {
       return $r('app.color.muted');
     }
-    const value: number = appStore.bpm;
-    if (value >= this.rangeMin() && value <= this.rangeMax()) {
+    const bpm: number = appStore.bpm;
+    const distance: number = bpm < this.rangeMin() ? this.rangeMin() - bpm :
+      (bpm > this.rangeMax() ? bpm - this.rangeMax() : 0);
+    if (distance === 0) {
       return $r('app.color.green');
     }
-    if ((value > this.rangeMax() && value < ORANGE_MAX_BPM) ||
-        (value < this.rangeMin() && value >= LOW_BPM)) {
-      return $r('app.color.orange');
+    return distance < WARN_MARGIN_BPM ? $r('app.color.orange') : $r('app.color.red');
+  }
+
+  private rgba(color: Resource, alpha: number = 1): string {
+    try {
+      const argb: number = this.getUIContext().getHostContext()!.resourceManager.getColorSync(color.id);
+      const a: number = (((argb >>> 24) & 0xff) / 255) * alpha;
+      return `rgba(${(argb >>> 16) & 0xff},${(argb >>> 8) & 0xff},${argb & 0xff},${a.toFixed(3)})`;
+    } catch (err) {
+      Logger.error(TAG, 'color no resuelto', err as Object);
+      return `rgba(255,255,255,${alpha})`;
     }
-    return $r('app.color.red');
+  }
+
+  private strokeArc(from: number, to: number, color: string): void {
+    const ctx: CanvasRenderingContext2D = this.context;
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = dimens.u(BAR_STROKE_BASE);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const steps: number = Math.max(2, Math.ceil(ARC_STEPS * (to - from)));
+    for (let i = 0; i <= steps; i++) {
+      const p: ArcPoint = this.puntoEnArco(from + (to - from) * i / steps);
+      if (i === 0) {
+        ctx.moveTo(p.x, p.y);
+      } else {
+        ctx.lineTo(p.x, p.y);
+      }
+    }
+    ctx.stroke();
+  }
+
+  /** Aro, tramo y marcador con la MISMA curva y la MISMA fracción. */
+  private draw(): void {
+    const ctx: CanvasRenderingContext2D = this.context;
+    ctx.clearRect(0, 0, dimens.u(BAR_WIDTH_BASE), dimens.u(BAR_HEIGHT_BASE));
+    this.strokeArc(0, 1, this.rgba($r('app.color.gray_3a3a40')));
+    this.strokeArc(bpmToFraccion(this.rangeMin()), bpmToFraccion(this.rangeMax()),
+      this.rgba($r('app.color.green'), this.isFirstUse() ? 0.4 : 1));
+    // Fuera del dominio, el clamp de bpmToFraccion deja el marcador en el extremo.
+    const marker: ArcPoint = this.puntoEnArco(bpmToFraccion(appStore.bpm));
+    ctx.beginPath();
+    ctx.arc(marker.x, marker.y, dimens.u(MARKER_BASE / 2), 0, Math.PI * 2);
+    ctx.fillStyle = this.rgba(this.stateColor());
+    ctx.fill();
+    ctx.lineWidth = dimens.u(MARKER_BORDER_BASE);
+    ctx.strokeStyle = this.rgba($r('app.color.text_primary'));
+    ctx.stroke();
+  }
+
+  /** Clave de redibujo: si cambia, el Canvas se recrea y onReady vuelve a dibujar (sin depender de @Monitor). */
+  private drawKey(): string {
+    return `${appStore.bpm}|${this.isFirstUse()}|${dimens.scale}`;
   }
 
   @Builder
   curvedBar() {
     Stack() {
-      Path()
-        .commands(this.trackCommands())
-        .stroke($r('app.color.gray_3a3a40'))
-        .strokeWidth(dimens.u(13))
-        .strokeLineCap(LineCapStyle.Round)
-        .fill(Color.Transparent)
-
-      Path()
-        .commands(this.highlightCommands())
-        .stroke($r('app.color.green'))
-        .strokeWidth(dimens.u(14))
-        .strokeLineCap(LineCapStyle.Round)
-        .fill(Color.Transparent)
-        .opacity(this.isFirstUse() ? 0.4 : 1)
-
-      Circle()
-        .width(dimens.u(14))
-        .height(dimens.u(14))
-        .fill(this.markerColor())
-        .position({
-          x: this.sx(this.markerPoint().x) - dimens.u(7),
-          y: this.sy(this.markerPoint().y) - dimens.u(7)
-        })
+      ForEach([this.drawKey()], (key: string): void => {
+        Canvas(this.context)
+          .width(dimens.u(BAR_WIDTH_BASE))
+          .height(dimens.u(BAR_HEIGHT_BASE))
+          .backgroundColor($r('app.color.transparent'))
+          .onReady((): void => {
+            this.draw();
+          })
+      }, (key: string): string => key)
     }
-    .width(dimens.cqw(CURVE_WIDTH_CQW))
-    .height(dimens.cqw(CURVE_HEIGHT_CQW))
-    .onAppear((): void => {
-      this.logMarkerPositions();
-    })
+    .width(dimens.u(BAR_WIDTH_BASE))
+    .height(dimens.u(BAR_HEIGHT_BASE))
   }
 
   @Builder
   rangeBody() {
-    Column({ space: dimens.cqw(1.4) }) {
+    // Presupuesto (base, cuerpo 296): héroe 46 + 8 + barra 70 + 8 + 3 x 30 + 2 x 6 = 234.
+    Column({ space: dimens.u(8) }) {
       Text(this.isFirstUse() ? $r('app.string.extra_range_general_compact') : $r('app.string.extra_range_normal_compact'))
-        .fontSize(dimens.u(DesignTokens.rangeHeroValue))
+        .fontSize(dimens.u(HERO_BASE))
+        .maxFontSize(dimens.u(HERO_BASE))
+        .minFontSize(dimens.u(DesignTokens.fsBody))
         .fontColor($r('app.color.text_primary'))
         .fontWeight(FontWeight.Bold)
         .maxLines(1)
+        .width('100%')
+        .textAlign(TextAlign.Center)
 
       this.curvedBar()
 
@@ -194,7 +195,7 @@ export struct RangePage {
         } else {
           Text($r('app.string.extra_range_current_short', appStore.bpm))
             .fontSize(dimens.u(DesignTokens.fsBody))
-            .fontColor(this.markerColor())
+            .fontColor(this.stateColor())
             .maxLines(1)
           Text($r('app.string.extra_range_resting_short'))
             .fontSize(dimens.u(DesignTokens.fsMin))
