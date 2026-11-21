@@ -11,10 +11,16 @@ Actualizado: 2026-11-20 22:2x
 - AGENTS.md: "Lecciones aprendidas".
 - Integración simulada con origin/feat/pantallas-extra (39aa3dd): sin conflictos (no integrada).
 
+- Anillo continuo (Progress Ring, restante/total del Clock) con logs 30/20/10/0; motivo congelado (alertBpm).
+- Contactos reales: alta en 2 pasos (relación + teclado 3x4), preferences (@kit.ArkData), máx. 5, llamada con call.makeCall (en previsualizador es mock: no dibuja marcador).
+- Integrada feat/pantallas-extra (9eeaf3f) en main: pulido de Rango, Ficha, Ajustes; RealSensorProvider añadido pero SIN conectar.
+
 ## En curso
 - Verificación visual del usuario en el previsualizador (anillo, halo, Alerta enviada).
 
 ## Siguiente
+- Revisar y conectar RealSensorProvider (de EXTRA, área CORE): declarar READ_HEALTH_DATA en module.json5, selección automática con fallback a Mock.
+- Píldora "Llamando a…" sigue en el Stack raíz: probablemente queda bajo Navigation (misma causa que las alertas); moverla si se necesita.
 - Integrar los 4 commits nuevos de EXTRA cuando el usuario lo pida.
 - Fase 2: contactos persistentes (@kit.ArkData preferences), RealSensorProvider con fallback a Mock.
 - Conectar appStore.settings (sensibilidad, minutos de aviso, modo ejercicio) con la máquina.
