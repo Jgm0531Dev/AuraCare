@@ -1,15 +1,18 @@
 # Estado EXTRA (feat/pantallas-extra)
 
 ## Hecho
-- Pantallas P2 implementadas y compiladas: Tu rango normal (`RangePage.ets`), Ficha médica (`MedicalPage.ets`) y Ajustes (`SettingsPage.ets`).
-- Commits publicados previamente: `9c2550f` (rango), `57b6fbe` (ficha médica), `1fae24e` (ajustes + documentación).
-- Integraciones de `origin/main` realizadas: `cc1ae74` y `d7d58c4` (docs de coordinación y archivos de estado).
-- Panel de demo con interruptor “Datos de ejemplo” y prueba de vibración; detección de caídas shown como no disponible salvo `SensorStatus.Available`.
+- `fetch` + merge de `origin/main` (`b65dd84`) al inicio de la tarea.
+- Pulido de las tres pantallas, con `BUILD SUCCESSFUL` tras cada bloque:
+  - `d530d07` Rango: sin “En reposo”, textos cortos, barra 70cqw con trazo 13/14 base y extremos redondos, marcador mapeado al tramo 58-92 (o 60-100 en primer uso) y fijado en el extremo si sale de rango.
+  - `64bdb23` Ficha médica: cruz médica, descripción corta, `WordBreak.NORMAL`, ancho 76cqw con margen para el indicador de página y tarjetas demo con scroll.
+  - `3c978bc` Ajustes: engranaje, subtítulos “Pausa las alertas automáticas” y “Reenvío si nadie responde”, filas que ciclan y padding inferior 6cqw.
+- Encabezados unificados en `ExtraPageHeader.ets` con `SymbolGlyph` del SDK (`waveform_path_ecg_heart`, `cross_square_fill`, `gearshape`), mismo tamaño (`DesignTokens.headerIconSize`) y color (`app.color.accion_principal`).
+- Textos nuevos en `resources/base/element/string_extra.json` (resources propios de EXTRA). No se tocó `PageHeader.ets`, `Index.ets`, `string.json` ni archivos de CORE.
 
 ## En curso
-- Revisión de propiedad de archivos según `AGENTS.md`: los commits ya publicados tocan `AppStore.ets`, `DemoPanelPage.ets`, `string.json` y `RUTA_DE_TRABAJO.md`, que ahora aparecen como propiedad de CORE. Pendiente de decisión del usuario antes de refactorizar.
-- Sin verificación visual en emulador/reloj; `@Preview` no añadido.
+- Verificación táctil/visual en previsualizador o reloj: no disponible desde este entorno; `@Preview` no añadido.
+- Gestos `Scroll` ↔ `ArcSwiper`: ambos `nestedScroll` usan `SELF_FIRST`; no validado en runtime. Si al bajar/volver se bloquea el cambio de página, CORE debe ajustar `Index.ets` (EXTRA no lo toca).
 
 ## Siguiente
-- Si el usuario confirma: mover estado de Ajustes a `state/SettingsStore.ets` y textos a resources propios, dejando store global, panel de demo y `RUTA_DE_TRABAJO.md` a CORE.
-- Mantener este archivo actualizado y hacer commit + push de `feat/pantallas-extra` al terminar cada tarea, solo con `BUILD SUCCESSFUL`.
+- Revisar nuevas capturas del previsualizador y confirmar que no hay desbordes ni conflicto de gestos.
+- Si aparece conflicto de gestos, registrar el caso para CORE y mantener este archivo actualizado con cada push de `feat/pantallas-extra`.
