@@ -1,10 +1,10 @@
 import {
   AutoAlertContext,
-  Clock,
   EmergencyEffect,
   EmergencyEvent,
   EmergencyMachine,
   EmergencySnapshot,
+  ScaledClock,
   Sensitivity
 } from '../state/EmergencyMachine';
 import { AppStore, DialogKind } from '../state/AppStore';
@@ -17,22 +17,8 @@ const TAG: string = 'EmergencyService';
 const TOAST_MS: number = 2000;
 const CALLING_MS: number = 2500;
 
-class SystemClock implements Clock {
-  now(): number {
-    return Date.now();
-  }
-
-  setTimeout(callback: () => void, delay: number): number {
-    return setTimeout(callback, delay);
-  }
-
-  clearTimeout(id: number): void {
-    clearTimeout(id);
-  }
-}
-
 class EmergencyService {
-  private readonly clock: Clock = new SystemClock();
+  private readonly clock: ScaledClock = new ScaledClock();
   private readonly machine: EmergencyMachine = new EmergencyMachine(this.clock);
   private store: AppStore | undefined = undefined;
   private toastTimer: number | undefined = undefined;
@@ -59,6 +45,11 @@ class EmergencyService {
       movementImmobile: store.movementImmobile
     };
     this.machine.updateAutoAlert(context);
+  }
+
+  /** x1 / x5 / x10 sobre el Clock inyectado en la máquina de emergencia. */
+  setTimeScale(scale: number): void {
+    this.clock.setSpeed(scale);
   }
 
   setNoticeMinutes(minutes: number): void {

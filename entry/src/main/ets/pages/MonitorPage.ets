@@ -12,6 +12,9 @@ import { SosButton } from '../components/SosButton';
 
 const TAG: string = 'MonitorPage';
 
+/** Acceso directo al panel demo en el previsualizador; poner a false para producción. */
+export const DEMO_VISIBLE: boolean = true;
+
 @ComponentV2
 export struct MonitorPage {
   @Event onOpenDemo: () => void = () => {};
@@ -190,6 +193,30 @@ export struct MonitorPage {
   }
 
   @Builder
+  demoBadge() {
+    Button($r('app.string.demo_badge'))
+      .fontSize(dimens.u(DesignTokens.fsMin))
+      .fontColor($r('app.color.red'))
+      .height(dimens.u(DesignTokens.demoBadgeHeightBase))
+      .padding({
+        left: dimens.u(DesignTokens.demoBadgePaddingBase),
+        right: dimens.u(DesignTokens.demoBadgePaddingBase)
+      })
+      .borderRadius(dimens.radiusChip())
+      .backgroundColor($r('app.color.card'))
+      .border({ width: dimens.thinBorder(), color: $r('app.color.red') })
+      .responseRegion({
+        x: -dimens.u(DesignTokens.demoBadgeHitExpandXBase),
+        y: -dimens.u(DesignTokens.demoBadgeHitExpandYBase),
+        width: dimens.u(DesignTokens.demoBadgeHitWidthBase),
+        height: dimens.touchMin()
+      })
+      .onClick((): void => {
+        this.onOpenDemo();
+      })
+  }
+
+  @Builder
   monitorBody() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -226,15 +253,23 @@ export struct MonitorPage {
           .margin({ top: this.gap(DesignTokens.monitorGapSmallBase) })
 
         Row() {
-          Text(this.stateLabel())
-            .fontSize(dimens.u(DesignTokens.fsMin))
-            .fontColor(this.stateTone())
-            .maxLines(1)
+          Row() {
+            Text(this.stateLabel())
+              .fontSize(dimens.u(DesignTokens.fsMin))
+              .fontColor(this.stateTone())
+              .maxLines(1)
+          }
+          .layoutWeight(1)
+          .justifyContent(FlexAlign.Center)
+
+          if (DEMO_VISIBLE) {
+            this.demoBadge()
+          }
         }
         .width('100%')
         .height(dimens.u(DesignTokens.monitorStatusRowBase))
         .margin({ top: this.gap(DesignTokens.monitorGapSmallBase) })
-        .justifyContent(FlexAlign.Center)
+        .alignItems(VerticalAlign.Center)
 
         Row({ space: dimens.u(DesignTokens.monitorChipsGapBase) }) {
           SensorChip({

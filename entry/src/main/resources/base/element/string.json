@@ -224,6 +224,11 @@
     { "name": "debug_layout_info", "value": "escala %s · raíz %s vp" },
     { "name": "permission_vibrate_reason", "value": "Necesario para avisarte con vibración cuando se activa una alerta de emergencia." },
 
+    { "name": "demo_badge", "value": "DEMO" },
+    { "name": "demo_time_speed_title", "value": "Velocidad del tiempo: x%d" },
+    { "name": "demo_speed_1", "value": "x1" },
+    { "name": "demo_speed_5", "value": "x5" },
+    { "name": "demo_speed_10", "value": "x10" },
     { "name": "demo_panel_title", "value": "Panel Demo" },
     { "name": "demo_control_title", "value": "Control de Estados" },
     { "name": "demo_pulse_selector", "value": "Selector de estado del pulso" },

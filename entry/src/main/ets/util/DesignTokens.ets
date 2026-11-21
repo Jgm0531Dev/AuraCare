@@ -80,6 +80,11 @@ export class DesignTokens {
   static readonly demoSectionGapCqw: number = 2.8;
   static readonly demoButtonHeightCqw: number = 10;
   static readonly demoButtonRadiusCqw: number = 3;
+  static readonly demoBadgeHeightBase: number = 30;
+  static readonly demoBadgePaddingBase: number = 8;
+  static readonly demoBadgeHitWidthBase: number = 100;
+  static readonly demoBadgeHitExpandXBase: number = 8;
+  static readonly demoBadgeHitExpandYBase: number = 21;
 
   // ScreenScaffold (base 466): cabecera y pie de alto fijo, cuerpo recortado.
   static readonly scaffoldHeaderBase: number = 40;

@@ -89,6 +89,74 @@ export interface EmergencySnapshot {
 
 export type EmergencyListener = (snapshot: EmergencySnapshot) => void;
 
+interface ScaledTimerEntry {
+  id: number;
+  callback: () => void;
+  remainingMs: number;
+  startedAtMs: number;
+  nativeId: number;
+}
+
+/** Clock inyectado con escala de tiempo: acelera todos los temporizadores de la máquina. */
+export class ScaledClock implements Clock {
+  private speed: number = 1;
+  private nextId: number = 1;
+  private readonly timers: Map<number, ScaledTimerEntry> = new Map();
+
+  now(): number {
+    return Date.now();
+  }
+
+  /** Reescala también los temporizadores ya en curso sin perder el tiempo transcurrido. */
+  setSpeed(speed: number): void {
+    const now: number = this.now();
+    const previous: number = this.speed;
+    this.speed = speed;
+    this.timers.forEach((entry: ScaledTimerEntry): void => {
+      clearTimeout(entry.nativeId);
+      const elapsed: number = (now - entry.startedAtMs) * previous;
+      entry.remainingMs = Math.max(0, entry.remainingMs - elapsed);
+      entry.startedAtMs = now;
+      entry.nativeId = setTimeout((): void => {
+        this.fire(entry.id);
+      }, entry.remainingMs / this.speed);
+    });
+  }
+
+  setTimeout(callback: () => void, delay: number): number {
+    const id: number = this.nextId++;
+    const entry: ScaledTimerEntry = {
+      id: id,
+      callback: callback,
+      remainingMs: delay,
+      startedAtMs: this.now(),
+      nativeId: 0
+    };
+    entry.nativeId = setTimeout((): void => {
+      this.fire(id);
+    }, delay / this.speed);
+    this.timers.set(id, entry);
+    return id;
+  }
+
+  clearTimeout(id: number): void {
+    const entry: ScaledTimerEntry | undefined = this.timers.get(id);
+    if (entry !== undefined) {
+      clearTimeout(entry.nativeId);
+      this.timers.delete(id);
+    }
+  }
+
+  private fire(id: number): void {
+    const entry: ScaledTimerEntry | undefined = this.timers.get(id);
+    if (entry === undefined) {
+      return;
+    }
+    this.timers.delete(id);
+    entry.callback();
+  }
+}
+
 export class EmergencyMachine {
   private state: AlertState = AlertState.None;
   private reason: AlertReason = AlertReason.PulsoCritico;

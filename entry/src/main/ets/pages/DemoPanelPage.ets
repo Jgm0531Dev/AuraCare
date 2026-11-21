@@ -13,6 +13,7 @@ import { ScreenScaffold } from '../components/ScreenScaffold';
 export struct DemoPanelPage {
   @Param onBack: () => void = () => {};
   @Local reason: AlertReason = AlertReason.PulsoCritico;
+  @Local timeScale: number = 1;
 
   aboutToAppear(): void {
     appStore.demoPanelVisible = true;
@@ -73,6 +74,20 @@ export struct DemoPanelPage {
         Text($r('app.string.demo_control_title'))
           .fontSize(dimens.u(DesignTokens.fsLabel))
           .fontColor($r('app.color.muted'))
+
+        this.sectionTitle($r('app.string.demo_time_speed_title', this.timeScale))
+        Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
+          this.choiceButton($r('app.string.demo_speed_1'), this.speedColor(1), (): void => {
+            this.selectSpeed(1);
+          })
+          this.choiceButton($r('app.string.demo_speed_5'), this.speedColor(5), (): void => {
+            this.selectSpeed(5);
+          })
+          this.choiceButton($r('app.string.demo_speed_10'), this.speedColor(10), (): void => {
+            this.selectSpeed(10);
+          })
+        }
+        .width('100%')
 
         this.sectionTitle($r('app.string.demo_pulse_selector'))
         Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
@@ -220,6 +235,15 @@ export struct DemoPanelPage {
     .width('100%')
     .height('100%')
     .backgroundColor($r('app.color.watch_background'))
+  }
+
+  private speedColor(speed: number): Resource {
+    return this.timeScale === speed ? $r('app.color.green') : $r('app.color.card');
+  }
+
+  private selectSpeed(speed: number): void {
+    this.timeScale = speed;
+    emergencyService.setTimeScale(speed);
   }
 
   private selectPulse(state: PulseState): void {
