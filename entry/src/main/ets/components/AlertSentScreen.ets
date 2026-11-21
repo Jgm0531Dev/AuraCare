@@ -41,7 +41,8 @@ export struct AlertSentScreen {
     if (reason === AlertReason.SosManual) {
       return $r('app.string.reason_sos');
     }
-    return $r('app.string.reason_pulse', appStore.bpm);
+    // Congelado en el disparo: no cambia con lecturas posteriores.
+    return $r('app.string.reason_pulse', appStore.alertBpm > 0 ? appStore.alertBpm : appStore.bpm);
   }
 
   private headerColor(): Resource {
@@ -178,6 +179,7 @@ export struct AlertSentScreen {
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
+    .backgroundColor($r('app.color.surface_deep'))
   }
 
   /** Cuerpo con scroll en flujo normal: sin posiciones absolutas ni márgenes negativos. */
@@ -266,6 +268,10 @@ export struct AlertSentScreen {
     .height('100%')
     .scrollBar(BarState.Off)
     .align(Alignment.Top)
+    // Recorte justo bajo la cabecera, fondo opaco y sin rebote que asome tarjetas.
+    .clip(true)
+    .edgeEffect(EdgeEffect.None)
+    .backgroundColor($r('app.color.surface_deep'))
   }
 
   build() {
