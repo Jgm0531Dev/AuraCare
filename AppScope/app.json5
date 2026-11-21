@@ -1,8 +1,8 @@
 {
   "app": {
     "bundleName": "com.jgmht.auracare",
-    "vendor": "example",
-    "versionCode": 1000000,
+    "vendor": "jgmht",
+    "versionCode": 1,
     "versionName": "1.0.0",
     "buildVersion": "1",
     "icon": "$media:layered_image",

@@ -15,6 +15,9 @@ Actualizado: 2026-11-20 22:2x
 - Contactos reales: alta en 2 pasos (relación + teclado 3x4), preferences (@kit.ArkData), máx. 5, llamada con call.makeCall (en previsualizador es mock: no dibuja marcador).
 - Integrada feat/pantallas-extra (9eeaf3f) en main: pulido de Rango, Ficha, Ajustes; RealSensorProvider añadido pero SIN conectar.
 
+- Pantalla Sensores (5 tarjetas, variantes, chip Simulado). Rango con escala única (Canvas).
+- Release v1.0.0: util/AppConfig.ets controla todo (RELEASE_MODE=true, DEBUG_LAYOUT=false, DEMO_VISIBLE=false, REVIEWER_DEMO_GESTURE=false); Logger.info silenciado en release; "SIMULADO" en el Monitor con el Mock; vendor/versionCode/descripciones reales; tags de plantilla fuera. Permisos: solo VIBRATE.
+
 ## En curso
 - Verificación visual del usuario en el previsualizador (anillo, halo, Alerta enviada).
 

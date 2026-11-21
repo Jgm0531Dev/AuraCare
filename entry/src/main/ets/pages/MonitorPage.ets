@@ -9,7 +9,8 @@ import { ScreenScaffold } from '../components/ScreenScaffold';
 import { HeartRateGauge } from '../components/HeartRateGauge';
 import { SensorChip } from '../components/SensorChip';
 import { SosButton } from '../components/SosButton';
-import { DEMO_VISIBLE } from '../util/AppConfig';
+import { DEMO_GESTURE_ENABLED, DEMO_VISIBLE } from '../util/AppConfig';
+import { sensorService } from '../service/SensorService';
 
 const TAG: string = 'MonitorPage';
 
@@ -32,7 +33,8 @@ export struct MonitorPage {
     if (appStore.mode === 'offline') {
       return $r('app.string.monitor_offline');
     }
-    return $r('app.string.monitor_live');
+    // Honestidad: con el MockSensorProvider activo no es una medición en vivo.
+    return sensorService.isSimulated() ? $r('app.string.monitor_simulated') : $r('app.string.monitor_live');
   }
 
   private liveDotColor(): Resource {
@@ -242,6 +244,9 @@ export struct MonitorPage {
         .justifyContent(FlexAlign.Center)
         // Acceso de revisores: la pulsación larga de 3 s abre el panel también con RELEASE_MODE.
         .gesture(LongPressGesture({ duration: 3000 }).onAction((_event: GestureEvent): void => {
+          if (!DEMO_GESTURE_ENABLED) {
+            return;
+          }
           this.onOpenDemo();
         }))
 

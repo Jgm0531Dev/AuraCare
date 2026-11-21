@@ -17,7 +17,7 @@ import { ContactsPage } from './ContactsPage';
 import { SettingsPage } from './SettingsPage';
 import { AlertRoute } from '../components/AlertRoute';
 import { AddContactPage } from './AddContactPage';
-import { DEMO_VISIBLE } from '../util/AppConfig';
+import { DEMO_GESTURE_ENABLED, DEMO_VISIBLE } from '../util/AppConfig';
 import { AlertConfirmDialog } from '../components/AlertConfirmDialog';
 
 @Entry
@@ -319,6 +319,10 @@ struct Index {
           ArcSwiper() {
             MonitorPage({
               onOpenDemo: (): void => {
+                // Ruta 'demo' inalcanzable en release (salvo REVIEWER_DEMO_GESTURE).
+                if (!DEMO_GESTURE_ENABLED) {
+                  return;
+                }
                 // Badge y pulsación larga pueden disparar dos veces: un solo panel en la pila.
                 if (this.pathStack.getAllPathName().indexOf('demo') >= 0) {
                   this.syncNavDepth('demoPush ignorado (ya abierto)');

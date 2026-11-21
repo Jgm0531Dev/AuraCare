@@ -1,7 +1,7 @@
 {
   "string": [
-    { "name": "module_desc", "value": "AuraCare, asistencia cardiaca para reloj" },
-    { "name": "EntryAbility_desc", "value": "Aplicación AuraCare para wearable" },
+    { "name": "module_desc", "value": "AuraCare vigila tu pulso en el reloj y avisa a tus contactos de emergencia" },
+    { "name": "EntryAbility_desc", "value": "Monitorea tu pulso y, ante una anomalía, avisa a tus contactos de emergencia con tu ubicación. Herramienta de apoyo y bienestar; no es un dispositivo médico." },
     { "name": "EntryAbility_label", "value": "AuraCare" },
 
     { "name": "page_monitor", "value": "Monitor" },
@@ -16,6 +16,7 @@
     { "name": "monitor_first_use", "value": "PRIMER USO · CALIBRANDO" },
     { "name": "monitor_offline", "value": "SIN CONEXIÓN · MODO LOCAL" },
     { "name": "monitor_live", "value": "MEDICIÓN EN VIVO" },
+    { "name": "monitor_simulated", "value": "SIMULADO" },
     { "name": "monitor_exercise", "value": "Ejercicio" },
     { "name": "bpm", "value": "BPM" },
     { "name": "pulse_normal", "value": "Ritmo normal" },

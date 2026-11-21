@@ -177,42 +177,45 @@ export struct DemoPanelPage {
           .fontSize(dimens.u(DesignTokens.fsLabel))
           .fontColor($r('app.color.muted'))
 
-        // Inline (no @Builder): el texto se re-evalúa al cambiar timeScale.
-        Text($r('app.string.demo_time_speed_title', this.timeScale))
-          .fontSize(dimens.u(DesignTokens.fsBody))
-          .fontColor($r('app.color.text_primary'))
-          .fontWeight(FontWeight.Medium)
-          .margin({ top: dimens.cqw(DesignTokens.demoSectionGapCqw) })
-        Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-          DemoChoiceButton({
-            label: $r('app.string.demo_speed_1'),
-            color: this.speedColor(1),
-            onPress: (): void => {
-              this.runClick('speed1', (): void => {
-                this.selectSpeed(1);
-              });
-            }
-          }).layoutWeight(1)
-          DemoChoiceButton({
-            label: $r('app.string.demo_speed_5'),
-            color: this.speedColor(5),
-            onPress: (): void => {
-              this.runClick('speed5', (): void => {
-                this.selectSpeed(5);
-              });
-            }
-          }).layoutWeight(1)
-          DemoChoiceButton({
-            label: $r('app.string.demo_speed_10'),
-            color: this.speedColor(10),
-            onPress: (): void => {
-              this.runClick('speed10', (): void => {
-                this.selectSpeed(10);
-              });
-            }
-          }).layoutWeight(1)
+        // Release: velocidad fija en x1 (sección oculta aunque un revisor abra el panel).
+        if (!RELEASE_MODE) {
+          // Inline (no @Builder): el texto se re-evalúa al cambiar timeScale.
+          Text($r('app.string.demo_time_speed_title', this.timeScale))
+            .fontSize(dimens.u(DesignTokens.fsBody))
+            .fontColor($r('app.color.text_primary'))
+            .fontWeight(FontWeight.Medium)
+            .margin({ top: dimens.cqw(DesignTokens.demoSectionGapCqw) })
+          Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
+            DemoChoiceButton({
+              label: $r('app.string.demo_speed_1'),
+              color: this.speedColor(1),
+              onPress: (): void => {
+                this.runClick('speed1', (): void => {
+                  this.selectSpeed(1);
+                });
+              }
+            }).layoutWeight(1)
+            DemoChoiceButton({
+              label: $r('app.string.demo_speed_5'),
+              color: this.speedColor(5),
+              onPress: (): void => {
+                this.runClick('speed5', (): void => {
+                  this.selectSpeed(5);
+                });
+              }
+            }).layoutWeight(1)
+            DemoChoiceButton({
+              label: $r('app.string.demo_speed_10'),
+              color: this.speedColor(10),
+              onPress: (): void => {
+                this.runClick('speed10', (): void => {
+                  this.selectSpeed(10);
+                });
+              }
+            }).layoutWeight(1)
+          }
+          .width('100%')
         }
-        .width('100%')
 
         this.sectionTitle($r('app.string.demo_pulse_selector'))
         Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {

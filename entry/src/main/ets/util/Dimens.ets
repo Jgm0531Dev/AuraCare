@@ -2,7 +2,10 @@ import { UIContext } from '@kit.ArkUI';
 import { DesignTokens } from './DesignTokens';
 import { Logger } from './Logger';
 
-export const DEBUG_LAYOUT: boolean = false;
+import { DEBUG_LAYOUT as DEBUG_LAYOUT_FLAG } from './AppConfig';
+
+/** Se controla desde util/AppConfig.ets (apagado siempre con RELEASE_MODE). */
+export const DEBUG_LAYOUT: boolean = DEBUG_LAYOUT_FLAG;
 
 /** Tamaño de la raíz en vp para la superposición opcional de depuración. */
 export function debugRootSize(widthVp: number, heightVp: number): string {

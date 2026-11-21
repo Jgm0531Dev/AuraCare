@@ -13,6 +13,7 @@ import { AlertState } from '../model/Alert';
 import { vibrationService } from './VibrationService';
 import { Logger } from '../util/Logger';
 import { DEBUG_LAYOUT } from '../util/Dimens';
+import { RELEASE_MODE } from '../util/AppConfig';
 import { call } from '@kit.TelephonyKit';
 import { Context } from '@kit.AbilityKit';
 import { EmergencyContact } from '../model/EmergencyContact';
@@ -94,7 +95,8 @@ class EmergencyService {
 
   /** x1 / x5 / x10 sobre el Clock inyectado en la máquina de emergencia. */
   setTimeScale(scale: number): void {
-    this.clock.setSpeed(scale);
+    // Release: velocidad fija en x1.
+    this.clock.setSpeed(RELEASE_MODE ? 1 : scale);
     if (DEBUG_LAYOUT) {
       Logger.info(TAG, `[trace] Clock velocidad=x${scale} alert=${this.store?.emergency.state}`);
     }
