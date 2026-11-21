@@ -239,6 +239,11 @@ export struct DemoPanelPage {
           $r('app.color.accion_principal'), (): void => {
             emergencyService.simulateAlert(this.reason);
           })
+        // Transición directa en la máquina: no depende de sensores ni de la auto-alerta.
+        this.wideButton('fireAlertNow', $r('app.string.demo_fire_now'),
+          $r('app.color.accion_principal'), (): void => {
+            emergencyService.fireAlertNow(this.reason);
+          })
         this.wideButton('viewAlertSent', $r('app.string.demo_view_alert_sent'),
           $r('app.color.card'), (): void => {
             emergencyService.viewAlertSent();

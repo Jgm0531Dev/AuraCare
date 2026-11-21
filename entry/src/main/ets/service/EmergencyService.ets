@@ -17,6 +17,9 @@ const TAG: string = 'EmergencyService';
 const TOAST_MS: number = 2000;
 const CALLING_MS: number = 2500;
 
+/** Aviso explícito a la raíz (Index), que no re-renderiza con lecturas directas del store. */
+export type UiListener = (event: string) => void;
+
 class EmergencyService {
   private readonly clock: ScaledClock = new ScaledClock();
   private readonly machine: EmergencyMachine = new EmergencyMachine(this.clock);
@@ -24,9 +27,45 @@ class EmergencyService {
   private toastTimer: number | undefined = undefined;
   private callingTimer: number | undefined = undefined;
   private lastEffectToken: number = 0;
+  private uiListeners: UiListener[] = [];
+
+  onUiChange(listener: UiListener): () => void {
+    this.uiListeners.push(listener);
+    return (): void => {
+      const index: number = this.uiListeners.indexOf(listener);
+      if (index >= 0) {
+        this.uiListeners.splice(index, 1);
+      }
+    };
+  }
+
+  private emitUi(event: string): void {
+    const store: AppStore | undefined = this.store;
+    if (DEBUG_LAYOUT && store !== undefined) {
+      Logger.info(TAG,
+        `[trace] store escrito (${event}): alert=${store.emergency.state} reason=${store.emergency.reason} dialog=${store.dialogOpen} calling=${store.callingVisible} listeners=${this.uiListeners.length}`);
+    }
+    this.uiListeners.forEach((listener: UiListener): void => {
+      try {
+        listener(event);
+      } catch (err) {
+        Logger.error(TAG, `uiListener falló (${event})`, err as Object);
+      }
+    });
+  }
+
+  /** Demo: transición directa a `¿Estás bien?`, aunque la cadena de sensores falle. */
+  fireAlertNow(reason: AlertReason): void {
+    this.machine.forceAreYouOk(reason);
+  }
 
   start(store: AppStore): void {
     this.store = store;
+    this.machine.setTracer((message: string): void => {
+      if (DEBUG_LAYOUT) {
+        Logger.info('EmergencyMachine', `[trace] ${message}`);
+      }
+    });
     this.machine.subscribe((snapshot: EmergencySnapshot): void => {
       this.applySnapshot(snapshot);
     });
@@ -50,6 +89,9 @@ class EmergencyService {
   /** x1 / x5 / x10 sobre el Clock inyectado en la máquina de emergencia. */
   setTimeScale(scale: number): void {
     this.clock.setSpeed(scale);
+    if (DEBUG_LAYOUT) {
+      Logger.info(TAG, `[trace] Clock velocidad=x${scale} alert=${this.store?.emergency.state}`);
+    }
   }
 
   setNoticeMinutes(minutes: number): void {
@@ -103,6 +145,7 @@ class EmergencyService {
       store.contactToRemoveName = contactName;
       store.dialogOpen = true;
       this.logOverlay('openDialog');
+      this.emitUi('openDialog');
     } catch (err) {
       this.closeDialog();
       Logger.error(TAG, 'openDialog falló', err as Object);
@@ -124,6 +167,7 @@ class EmergencyService {
       store.dialogOpen = false;
       store.dialogKind = DialogKind.None;
       this.logOverlay('closeDialog');
+      this.emitUi('closeDialog');
     }
   }
 
@@ -211,12 +255,14 @@ class EmergencyService {
       return;
     }
     store.showCalling(name);
+    this.emitUi('showCalling');
     if (this.callingTimer !== undefined) {
       this.clock.clearTimeout(this.callingTimer);
     }
     this.callingTimer = this.clock.setTimeout((): void => {
       this.callingTimer = undefined;
       store.hideCalling();
+      this.emitUi('hideCalling');
     }, CALLING_MS);
   }
 
@@ -246,6 +292,7 @@ class EmergencyService {
     store.emergencySeconds = snapshot.remainingSeconds;
     store.nextNoticeSeconds = snapshot.nextNoticeSeconds;
     store.onWay = snapshot.onWayPaused;
+    this.emitUi('snapshot');
     if (snapshot.effectToken === this.lastEffectToken) {
       return;
     }

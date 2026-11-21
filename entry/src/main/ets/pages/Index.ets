@@ -27,6 +27,28 @@ struct Index {
   @Local debugScale: number = dimens.scale;
   @Local debugRoot: string = debugRootSize(dimens.rootWidthVp, dimens.rootHeightVp);
   private indicator: ArcDotIndicator = new ArcDotIndicator();
+  // Espejos locales: Index no re-renderiza con lecturas directas de appStore (comprobado en
+  // previewer.log: disableSwipe y las capas de alerta no reaccionaban). Los alimenta EmergencyService.
+  @Local alertState: AlertState = AlertState.None;
+  @Local dialogVisible: boolean = false;
+  @Local callingVisible: boolean = false;
+  private unsubscribeUi: () => void = (): void => {};
+
+  private syncFromStore(event: string): void {
+    this.alertState = appStore.emergency.state;
+    this.dialogVisible = appStore.dialogOpen;
+    this.callingVisible = appStore.callingVisible;
+    if (DEBUG_LAYOUT) {
+      Logger.info('Index',
+        `[trace] espejo actualizado (${event}): alert=${this.alertState} dialog=${this.dialogVisible} calling=${this.callingVisible} navStackDepth=${this.pathStack.size()}`);
+    }
+  }
+
+  private logOverlay(name: string): void {
+    if (DEBUG_LAYOUT) {
+      Logger.info('Index', `[trace] capa visible: ${name} alert=${this.alertState}`);
+    }
+  }
 
   aboutToAppear(): void {
     dimens.init(this.getUIContext());
@@ -36,6 +58,10 @@ struct Index {
     }
     sensorService.start(appStore);
     emergencyService.start(appStore);
+    this.unsubscribeUi = emergencyService.onUiChange((event: string): void => {
+      this.syncFromStore(event);
+    });
+    this.syncFromStore('aboutToAppear');
     this.indicator
       .arcDirection(ArcDirection.THREE_CLOCK_DIRECTION)
       .itemColor($r('app.color.gray_636366'))
@@ -94,6 +120,7 @@ struct Index {
   }
 
   aboutToDisappear(): void {
+    this.unsubscribeUi();
     emergencyService.dispose();
     sensorService.release();
   }
@@ -246,7 +273,7 @@ struct Index {
           .width('100%')
           .height('100%')
           .vertical(true)
-          .disableSwipe(appStore.emergency.state !== AlertState.None || appStore.dialogOpen)
+          .disableSwipe(this.alertState !== AlertState.None || this.dialogVisible)
           .indicator(this.indicator)
           .index(this.activePage)
           .onChange((index: number) => {
@@ -271,24 +298,37 @@ struct Index {
       .width('100%')
       .height('100%')
 
-      if (appStore.emergency.state === AlertState.AreYouOk ||
-          appStore.emergency.state === AlertState.SosCountdown) {
+      if (this.alertState === AlertState.AreYouOk ||
+          this.alertState === AlertState.SosCountdown) {
         CountdownAlertScreen()
           .width('100%')
           .height('100%')
+          .onAppear((): void => {
+            this.logOverlay('CountdownAlertScreen');
+          })
       }
 
-      if (appStore.emergency.state === AlertState.AlertSent) {
+      if (this.alertState === AlertState.AlertSent) {
         AlertSentScreen()
           .width('100%')
           .height('100%')
+          .onAppear((): void => {
+            this.logOverlay('AlertSentScreen');
+          })
       }
 
-      if (appStore.dialogOpen) {
-        this.confirmDialog()
+      if (this.dialogVisible) {
+        Column() {
+          this.confirmDialog()
+        }
+        .width('100%')
+        .height('100%')
+        .onAppear((): void => {
+          this.logOverlay(`confirmDialog kind=${appStore.dialogKind}`);
+        })
       }
 
-      if (appStore.callingVisible) {
+      if (this.callingVisible) {
         Column() {
           Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
             Text($r('app.string.calling_prefix'))

@@ -247,6 +247,7 @@
     { "name": "demo_reason_sos", "value": "SOS manual" },
     { "name": "demo_auto_alerts", "value": "Alertas automáticas" },
     { "name": "demo_simulate_alert", "value": "Simular alerta" },
+    { "name": "demo_fire_now", "value": "Disparar alerta ahora" },
     { "name": "demo_view_alert_sent", "value": "Ver Alerta enviada" },
     { "name": "demo_simulate_contact_response", "value": "Simular respuesta de contacto" },
     { "name": "demo_contacts_empty", "value": "Contactos vacíos" },
