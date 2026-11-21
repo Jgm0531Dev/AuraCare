@@ -248,10 +248,11 @@
     { "name": "demo_auto_alerts", "value": "Alertas automáticas" },
     { "name": "demo_simulate_alert", "value": "Simular alerta" },
     { "name": "demo_fire_now", "value": "Disparar alerta ahora" },
+    { "name": "demo_sample_contacts", "value": "Contactos de ejemplo" },
     { "name": "demo_view_alert_sent", "value": "Ver Alerta enviada" },
     { "name": "demo_simulate_contact_response", "value": "Simular respuesta de contacto" },
     { "name": "demo_contacts_empty", "value": "Contactos vacíos" },
-    { "name": "demo_contact_added", "value": "Simular contacto agregado desde el teléfono" },
+    { "name": "demo_contact_added", "value": "Añadir contacto de prueba" },
     { "name": "demo_offline", "value": "Sin conexión" },
     { "name": "demo_first_use", "value": "Primer uso (sin datos)" },
 

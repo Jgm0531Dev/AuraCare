@@ -16,6 +16,7 @@ import { MedicalPage } from './MedicalPage';
 import { ContactsPage } from './ContactsPage';
 import { SettingsPage } from './SettingsPage';
 import { AlertRoute } from '../components/AlertRoute';
+import { DEMO_VISIBLE } from '../util/AppConfig';
 import { AlertConfirmDialog } from '../components/AlertConfirmDialog';
 
 @Entry
@@ -227,6 +228,9 @@ struct Index {
     if (appStore.dialogKind === DialogKind.RemoveContact) {
       return $r('app.string.icon_warning');
     }
+    if (appStore.dialogKind === DialogKind.AddContact) {
+      return $r('app.string.icon_phone');
+    }
     return $r('app.string.icon_check');
   }
 
@@ -243,7 +247,7 @@ struct Index {
       icon: this.dialogIcon(),
       tone: this.dialogTone(),
       hideCancel: appStore.dialogKind === DialogKind.AddContact,
-      showSimulationNote: appStore.dialogKind !== DialogKind.AddContact,
+      showSimulationNote: appStore.dialogKind === DialogKind.Call911 && DEMO_VISIBLE,
       onConfirm: (): void => {
         emergencyService.confirmDialog();
       },
@@ -300,6 +304,9 @@ struct Index {
           ArcSwiper() {
             MonitorPage({
               onOpenDemo: (): void => {
+                if (!DEMO_VISIBLE) {
+                  return;
+                }
                 // Badge y pulsación larga pueden disparar dos veces: un solo panel en la pila.
                 if (this.pathStack.getAllPathName().indexOf('demo') >= 0) {
                   this.syncNavDepth('demoPush ignorado (ya abierto)');

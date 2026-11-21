@@ -43,7 +43,8 @@ export class AppStore {
   @Trace movementLabel: Resource = $r('app.string.walking');
   @Trace markerAngle: number = 245;
   @Trace stateColor: Resource = $r('app.color.green');
-  @Trace contacts: EmergencyContact[] = DEFAULT_CONTACTS.slice();
+  /** Estado inicial vacío; los de ejemplo solo con el interruptor del panel demo. */
+  @Trace contacts: EmergencyContact[] = [];
   @Trace capabilities: SensorCapabilities = DEFAULT_CAPABILITIES;
   @Trace settings: AppSettings = new AppSettings();
   @Trace emergency: AppEmergency = new AppEmergency();

@@ -191,9 +191,7 @@ class EmergencyService {
         this.syncOnWay();
         return;
       }
-      if (kind === DialogKind.AddContact) {
-        this.addDemoContact();
-      }
+      // AddContact: "Entendido" solo cierra el aviso; el contacto de prueba se añade desde el panel demo.
     } catch (err) {
       Logger.error(TAG, 'confirmDialog falló', err as Object);
     } finally {
