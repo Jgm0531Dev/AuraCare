@@ -15,8 +15,7 @@ import { RangePage } from './RangePage';
 import { MedicalPage } from './MedicalPage';
 import { ContactsPage } from './ContactsPage';
 import { SettingsPage } from './SettingsPage';
-import { CountdownAlertScreen } from '../components/CountdownAlertScreen';
-import { AlertSentScreen } from '../components/AlertSentScreen';
+import { AlertRoute } from '../components/AlertRoute';
 import { AlertConfirmDialog } from '../components/AlertConfirmDialog';
 
 @Entry
@@ -41,6 +40,42 @@ struct Index {
     if (DEBUG_LAYOUT) {
       Logger.info('Index',
         `[trace] espejo actualizado (${event}): alert=${this.alertState} dialog=${this.dialogVisible} calling=${this.callingVisible} navStackDepth=${this.pathStack.size()}`);
+    }
+    this.syncRoutes(event);
+  }
+
+  /** Alerta y diálogos como rutas: lo único que se dibuja encima de Navigation. */
+  private syncRoutes(event: string): void {
+    try {
+      const wantAlert: boolean = this.alertState !== AlertState.None;
+      if (wantAlert && this.pathStack.getAllPathName().indexOf('alert') < 0) {
+        // La alerta toma la pantalla: se cierra el panel demo o lo que esté abierto.
+        this.pathStack.clear(false);
+        this.pathStack.pushPath({ name: 'alert' }, false);
+        this.traceRoute(`push alert (${event})`);
+      } else if (!wantAlert && this.pathStack.getAllPathName().indexOf('alert') >= 0) {
+        this.pathStack.removeByName('alert');
+        this.traceRoute(`remove alert (${event})`);
+      }
+      const hasDialog: boolean = this.pathStack.getAllPathName().indexOf('dialog') >= 0;
+      if (this.dialogVisible && !hasDialog) {
+        this.pathStack.pushPath({ name: 'dialog' }, false);
+        this.traceRoute(`push dialog (${event})`);
+      } else if (!this.dialogVisible && hasDialog) {
+        this.pathStack.removeByName('dialog');
+        this.traceRoute(`remove dialog (${event})`);
+      }
+    } catch (err) {
+      Logger.error('Index', `syncRoutes falló (${event})`, err as Object);
+    } finally {
+      appStore.navStackDepth = this.pathStack.size();
+    }
+  }
+
+  private traceRoute(action: string): void {
+    if (DEBUG_LAYOUT) {
+      Logger.info('Index',
+        `[trace] ruta ${action}: pila=[${this.pathStack.getAllPathName().join(',')}]`);
     }
   }
 
@@ -103,6 +138,23 @@ struct Index {
             this.syncNavDepth('demoPop');
           }
         }
+      })
+    } else if (name === 'alert') {
+      AlertRoute()
+    } else if (name === 'dialog') {
+      NavDestination() {
+        this.confirmDialog()
+      }
+      .hideTitleBar(true)
+      .width('100%')
+      .height('100%')
+      .backgroundColor($r('app.color.watch_background'))
+      .onShown((): void => {
+        this.logOverlay(`confirmDialog kind=${appStore.dialogKind}`);
+      })
+      .onBackPressed((): boolean => {
+        emergencyService.closeDialog();
+        return true;
       })
     } else {
       NavDestination() {
@@ -298,35 +350,7 @@ struct Index {
       .width('100%')
       .height('100%')
 
-      if (this.alertState === AlertState.AreYouOk ||
-          this.alertState === AlertState.SosCountdown) {
-        CountdownAlertScreen()
-          .width('100%')
-          .height('100%')
-          .onAppear((): void => {
-            this.logOverlay('CountdownAlertScreen');
-          })
-      }
-
-      if (this.alertState === AlertState.AlertSent) {
-        AlertSentScreen()
-          .width('100%')
-          .height('100%')
-          .onAppear((): void => {
-            this.logOverlay('AlertSentScreen');
-          })
-      }
-
-      if (this.dialogVisible) {
-        Column() {
-          this.confirmDialog()
-        }
-        .width('100%')
-        .height('100%')
-        .onAppear((): void => {
-          this.logOverlay(`confirmDialog kind=${appStore.dialogKind}`);
-        })
-      }
+      // Alerta y diálogos ya no van aquí: son rutas 'alert' y 'dialog' (ver syncRoutes).
 
       if (this.callingVisible) {
         Column() {
