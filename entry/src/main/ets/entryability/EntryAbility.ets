@@ -1,6 +1,8 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { emergencyService } from '../service/EmergencyService';
+import { notificationService } from '../service/NotificationService';
 
 const DOMAIN: number = 0xA10A;
 
@@ -28,6 +30,19 @@ export default class EntryAbility extends UIAbility {
         return;
       }
       hilog.info(DOMAIN, 'EntryAbility', 'Succeeded in loading the content.');
+      // Vigilancia solo en primer plano (no hay BackgroundMode legítimo para esto):
+      // la pantalla se mantiene encendida mientras la app está abierta.
+      try {
+        windowStage.getMainWindowSync().setWindowKeepScreenOn(true).catch((e: Object): void => {
+          hilog.error(DOMAIN, 'EntryAbility', 'setWindowKeepScreenOn falló: %{public}s', JSON.stringify(e));
+        });
+      } catch (e) {
+        hilog.error(DOMAIN, 'EntryAbility', 'getMainWindowSync falló: %{public}s', JSON.stringify(e));
+      }
+      // Permiso de notificaciones y canal propio (diálogo del sistema una sola vez).
+      notificationService.init(this.context).catch((e: Object): void => {
+        hilog.error(DOMAIN, 'EntryAbility', 'notificationService.init falló: %{public}s', JSON.stringify(e));
+      });
     });
   }
 
@@ -39,10 +54,12 @@ export default class EntryAbility extends UIAbility {
   onForeground(): void {
     // Ability has brought to foreground
     hilog.info(DOMAIN, 'EntryAbility', '%{public}s', 'Ability onForeground');
+    emergencyService.onForeground();
   }
 
   onBackground(): void {
     // Ability has back to background
     hilog.info(DOMAIN, 'EntryAbility', '%{public}s', 'Ability onBackground');
+    emergencyService.onBackground();
   }
 }

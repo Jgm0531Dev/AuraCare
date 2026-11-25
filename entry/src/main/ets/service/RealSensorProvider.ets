@@ -2,8 +2,7 @@ import { abilityAccessCtrl, Context, Permissions } from '@kit.AbilityKit';
 import { sensor } from '@kit.SensorServiceKit';
 import { SensorReading } from '../model/SensorReading';
 import { SensorCapabilities, SensorStatus } from '../model/SensorAvailability';
-import { PulseState, PulseVariant } from '../model/PulseState';
-import { PULSE_VARIANTS } from '../mock/DemoData';
+import { PulseState } from '../model/PulseState';
 import { SensorProvider } from './SensorProvider';
 import { Logger } from '../util/Logger';
 
@@ -18,6 +17,9 @@ const IMMOBILE_AVG: number = 0.12;
 const IMMOBILE_MAX: number = 0.25;
 const RESTING_AVG: number = 0.55;
 const MIN_MOTION_SAMPLES: number = 4;
+/** Una lectura de pulso más vieja que esto ya no se muestra ni se evalúa. */
+const HEART_RATE_FRESH_MS: number = 5000;
+const MOTION_FRESH_MS: number = 3000;
 
 class MotionSample {
   timestamp: number = 0;
@@ -25,19 +27,22 @@ class MotionSample {
 }
 
 export class RealSensorProvider implements SensorProvider {
-  private variant: PulseVariant = PULSE_VARIANTS[0];
+  // SpO2 y temperatura: sin SensorId público en el SDK 6.1.1(24) -> No disponible (ver docs/auditoria-fase0.md).
   private capabilitiesState: SensorCapabilities = {
     heartRate: SensorStatus.Available,
-    spo2: SensorStatus.Available,
-    temperature: SensorStatus.Available,
+    spo2: SensorStatus.Unavailable,
+    temperature: SensorStatus.Unavailable,
     movement: SensorStatus.Available,
     location: SensorStatus.Available,
     fallDetection: SensorStatus.Available
   };
-  private bpm: number = this.variant.bpm;
-  private spo2: number = this.variant.spo2;
-  private temperature: number = this.variant.temperature;
-  private movementLabel: Resource = this.variant.movementLabel;
+  /** 0 = sin lectura. Nunca se rellena con valores de ejemplo. */
+  private bpm: number = 0;
+  private spo2: number = 0;
+  private temperature: number = 0;
+  private movementLabel: Resource = $r('app.string.value_dash');
+  private immobile: boolean = false;
+  private peakG: number = 0;
   private availabilityChecked: boolean = false;
   private heartRateAvailable: boolean = false;
   private movementAvailable: boolean = false;
@@ -67,6 +72,7 @@ export class RealSensorProvider implements SensorProvider {
       try {
         const magnitude: number = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
         const deviation: number = Math.abs(magnitude - GRAVITY_MS2);
+        this.peakG = Math.max(this.peakG, magnitude / GRAVITY_MS2);
         const now: number = Date.now();
         this.motionSamples = this.motionSamples.filter((sample: MotionSample): boolean =>
           now - sample.timestamp <= MOVEMENT_WINDOW_MS);
@@ -86,7 +92,8 @@ export class RealSensorProvider implements SensorProvider {
           max = Math.max(max, item.deviation);
         });
         const average: number = sum / this.motionSamples.length;
-        if (average < IMMOBILE_AVG && max < IMMOBILE_MAX) {
+        this.immobile = average < IMMOBILE_AVG && max < IMMOBILE_MAX;
+        if (this.immobile) {
           this.movementLabel = $r('app.string.immobile');
         } else if (average < RESTING_AVG) {
           this.movementLabel = $r('app.string.resting');
@@ -106,28 +113,44 @@ export class RealSensorProvider implements SensorProvider {
       this.permissionDenied = !granted;
       if (granted) {
         Logger.info(TAG, 'Permiso READ_HEALTH_DATA concedido');
+        // Re-evalúa y suscribe aunque una comprobación anterior lo hubiera marcado sin permiso.
+        if (!this.heartRateSubscribed) {
+          this.capabilitiesState.heartRate = SensorStatus.Available;
+          this.availabilityChecked = false;
+        }
         this.ensureStarted();
       } else {
         this.capabilitiesState.heartRate = SensorStatus.PermissionRequired;
-        Logger.warn(TAG, 'Permiso READ_HEALTH_DATA denegado; pulso simulado');
+        Logger.warn(TAG, 'Permiso READ_HEALTH_DATA denegado; sin lectura de pulso');
       }
       return granted;
     } catch (err) {
       this.permissionDenied = true;
       this.capabilitiesState.heartRate = SensorStatus.PermissionRequired;
-      Logger.error(TAG, 'No se pudo solicitar READ_HEALTH_DATA; pulso simulado', err as Object);
+      Logger.error(TAG, 'No se pudo solicitar READ_HEALTH_DATA; sin lectura de pulso', err as Object);
       return false;
     }
   }
 
   read(): SensorReading {
     this.ensureStarted();
+    const now: number = Date.now();
+    const heartRateValid: boolean = this.heartRateSubscribed && this.lastHeartRateAt > 0 &&
+      now - this.lastHeartRateAt <= HEART_RATE_FRESH_MS;
+    const motionValid: boolean = this.movementSubscribed && this.lastMovementAt > 0 &&
+      now - this.lastMovementAt <= MOTION_FRESH_MS && this.motionSamples.length >= MIN_MOTION_SAMPLES;
+    const peak: number = this.peakG;
+    this.peakG = 0;
     return {
-      bpm: this.bpm,
-      spo2: this.spo2,
-      temperature: this.temperature,
-      movementLabel: this.movementLabel,
-      timestamp: Date.now()
+      bpm: heartRateValid ? this.bpm : 0,
+      spo2: 0,
+      temperature: 0,
+      movementLabel: motionValid ? this.movementLabel : $r('app.string.value_dash'),
+      timestamp: now,
+      heartRateValid: heartRateValid,
+      motionValid: motionValid,
+      immobile: motionValid && this.immobile,
+      peakG: motionValid ? peak : 0
     };
   }
 
@@ -143,27 +166,12 @@ export class RealSensorProvider implements SensorProvider {
     };
   }
 
-  setVariant(state: PulseState): void {
-    const found: PulseVariant | undefined = PULSE_VARIANTS.find((item: PulseVariant): boolean => item.state === state);
-    if (found === undefined) {
-      return;
-    }
-    this.variant = found;
-    this.bpm = found.bpm;
-    this.spo2 = found.spo2;
-    this.temperature = found.temperature;
-    this.movementLabel = found.movementLabel;
+  /** Lecturas reales: las variantes de demostración no aplican. */
+  setVariant(_state: PulseState): void {
   }
 
-  setCapabilities(capabilities: SensorCapabilities): void {
-    this.capabilitiesState = {
-      heartRate: capabilities.heartRate,
-      spo2: capabilities.spo2,
-      temperature: capabilities.temperature,
-      movement: capabilities.movement,
-      location: capabilities.location,
-      fallDetection: capabilities.fallDetection
-    };
+  /** Las capacidades reales las decide el hardware, no la UI. */
+  setCapabilities(_capabilities: SensorCapabilities): void {
   }
 
   release(): void {
@@ -208,26 +216,28 @@ export class RealSensorProvider implements SensorProvider {
         item.sensorId === sensor.SensorId.ACCELEROMETER);
       if (!this.heartRateAvailable) {
         this.capabilitiesState.heartRate = SensorStatus.Unavailable;
-        Logger.warn(TAG, 'SensorId.HEART_RATE no existe; pulso simulado');
+        Logger.warn(TAG, 'SensorId.HEART_RATE no existe; sin lectura de pulso');
       }
       if (!this.movementAvailable) {
         this.capabilitiesState.movement = SensorStatus.Unavailable;
-        Logger.warn(TAG, 'SensorId.ACCELEROMETER no existe; movimiento simulado');
+        this.capabilitiesState.fallDetection = SensorStatus.Unavailable;
+        Logger.warn(TAG, 'SensorId.ACCELEROMETER no existe; sin lectura de movimiento');
       }
       this.subscribeAvailableSensors();
     } catch (err) {
       this.capabilitiesState.heartRate = SensorStatus.Unavailable;
       this.capabilitiesState.movement = SensorStatus.Unavailable;
-      Logger.error(TAG, 'getSensorList falló; lecturas simuladas', err as Object);
+      Logger.error(TAG, 'getSensorList falló; sin lecturas', err as Object);
     }
   }
 
   private subscribeAvailableSensors(): void {
-    if (this.heartRateAvailable && !this.permissionDenied &&
+    if (this.heartRateAvailable && !this.permissionDenied && !this.heartRateSubscribed &&
         this.capabilitiesState.heartRate !== SensorStatus.Unavailable) {
       this.subscribeHeartRate();
     }
-    if (this.movementAvailable && this.capabilitiesState.movement !== SensorStatus.Unavailable) {
+    if (this.movementAvailable && !this.movementSubscribed &&
+        this.capabilitiesState.movement !== SensorStatus.Unavailable) {
       this.subscribeMovement();
     }
     if (this.heartRateSubscribed || this.movementSubscribed) {
@@ -245,10 +255,10 @@ export class RealSensorProvider implements SensorProvider {
       if (this.isPermissionError(err)) {
         this.permissionDenied = true;
         this.capabilitiesState.heartRate = SensorStatus.PermissionRequired;
-        Logger.warn(TAG, 'Activar permiso READ_HEALTH_DATA; pulso simulado');
+        Logger.warn(TAG, 'Activar permiso READ_HEALTH_DATA; sin lectura de pulso');
       } else {
         this.capabilitiesState.heartRate = SensorStatus.Unavailable;
-        Logger.error(TAG, 'No se pudo suscribir al pulso; lectura simulada', err as Object);
+        Logger.error(TAG, 'No se pudo suscribir al pulso; sin lectura', err as Object);
       }
     }
   }
@@ -262,10 +272,10 @@ export class RealSensorProvider implements SensorProvider {
       this.movementSubscribed = false;
       if (this.isPermissionError(err)) {
         this.capabilitiesState.movement = SensorStatus.PermissionRequired;
-        Logger.warn(TAG, 'Activar permiso de acelerómetro; movimiento simulado');
+        Logger.warn(TAG, 'Activar permiso de acelerómetro; sin lectura de movimiento');
       } else {
         this.capabilitiesState.movement = SensorStatus.Unavailable;
-        Logger.error(TAG, 'No se pudo suscribir al acelerómetro; movimiento simulado', err as Object);
+        Logger.error(TAG, 'No se pudo suscribir al acelerómetro; sin lectura de movimiento', err as Object);
       }
     }
   }
@@ -293,15 +303,12 @@ export class RealSensorProvider implements SensorProvider {
     const now: number = Date.now();
     if (this.heartRateSubscribed && this.capabilitiesState.heartRate !== SensorStatus.PermissionRequired &&
         now - this.lastHeartRateAt >= NO_DATA_TIMEOUT_MS) {
-      this.capabilitiesState.heartRate = SensorStatus.Unavailable;
-      this.bpm = this.variant.bpm;
-      Logger.warn(TAG, 'Sin datos de pulso en 10 s; lectura simulada');
+      // Sin datos (p. ej., reloj sin colocar): se mantiene suscrito; read() devuelve "sin lectura".
+      Logger.warn(TAG, 'Sin datos de pulso en 10 s; sin lectura');
     }
     if (this.movementSubscribed && this.capabilitiesState.movement !== SensorStatus.PermissionRequired &&
         now - this.lastMovementAt >= NO_DATA_TIMEOUT_MS) {
-      this.capabilitiesState.movement = SensorStatus.Unavailable;
-      this.movementLabel = this.variant.movementLabel;
-      Logger.warn(TAG, 'Sin datos de movimiento en 10 s; lectura simulada');
+      Logger.warn(TAG, 'Sin datos de movimiento en 10 s; sin lectura');
     }
   }
 

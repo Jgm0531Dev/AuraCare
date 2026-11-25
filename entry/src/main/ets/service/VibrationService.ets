@@ -17,7 +17,7 @@ class VibrationService {
 
   init(context: Context): void {
     this.context = context;
-    void this.requestPermission();
+    // VIBRATE es system_grant: se concede al instalar, no hace falta pedirlo en tiempo de ejecución.
   }
 
   async requestPermission(): Promise<void> {

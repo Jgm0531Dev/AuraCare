@@ -25,6 +25,10 @@ export class AppSettings {
   @Trace exerciseMode: boolean = false;
   @Trace batterySaver: boolean = false;
   @Trace fallDetection: boolean = true;
+  /** Modo demostración: datos de prueba generados en el reloj (apagado por defecto). */
+  @Trace demoMode: boolean = false;
+  /** Ubicación opcional: solo se muestra en el reloj al confirmarse una alerta. */
+  @Trace locationEnabled: boolean = false;
 }
 
 @ObservedV2
@@ -51,6 +55,26 @@ export class AppStore {
   @Trace mode: WatchMode = 'live';
   @Trace autoAlerts: boolean = true;
   @Trace movementImmobile: boolean = false;
+  /** false = sin lectura de pulso (sin permiso, sin sensor o reloj sin colocar): el Monitor muestra "--". */
+  @Trace heartRateValid: boolean = false;
+  @Trace motionValid: boolean = false;
+  /** Rango normal personal calculado con lecturas reales acumuladas (RangeModel). */
+  @Trace rangeReady: boolean = false;
+  @Trace rangeMin: number = 60;
+  @Trace rangeMax: number = 100;
+  @Trace rangeSamples: number = 0;
+  /** Una condición anómala se está acumulando (motor de anomalías). */
+  @Trace anomalyPending: boolean = false;
+  /** La alarma de Alerta activa fue silenciada por el usuario (vuelve con el recordatorio). */
+  @Trace alarmSilenced: boolean = false;
+  /** Ubicación de la alerta (LocationStatus como texto), solo para mostrar en el reloj. */
+  @Trace locationStatus: string = 'off';
+  @Trace latitude: number = 0;
+  @Trace longitude: number = 0;
+  @Trace address: string = '';
+  /** El reloj no puede llamar (sin capacidad de voz o makeCall falló): se muestra el número. */
+  @Trace callFailedVisible: boolean = false;
+  @Trace callFailedNumber: string = '';
   @Trace emergencySeconds: number = 0;
   /** Total de la cuenta en curso, desde la máquina (respeta x5/x10 vía Clock). */
   @Trace emergencyTotalSeconds: number = 0;
@@ -69,6 +93,8 @@ export class AppStore {
   @Trace contactResponseStep: number = 0;
   @Trace contactToRemoveId: string = '';
   @Trace contactToRemoveName: string = '';
+  /** Contacto en edición (ruta 'addContact'); vacío = alta nueva. */
+  @Trace editingContactId: string = '';
   @Trace demoPanelVisible: boolean = true;
 
   selectVariant(variant: PulseVariant): void {

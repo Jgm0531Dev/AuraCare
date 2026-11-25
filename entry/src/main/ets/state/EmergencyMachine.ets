@@ -58,7 +58,9 @@ export enum EmergencyEffect {
   AlertSent,
   AlertSentPreview,
   ToastCancelled,
-  ToastNotified
+  ToastNotified,
+  /** Venció el intervalo de recordatorio en Alerta activa (repetir alarma y notificación). */
+  NoticeDue
 }
 
 /** Patrones de vibración solicitados por la máquina; el servicio los ejecuta. */
@@ -342,6 +344,33 @@ export class EmergencyMachine {
     }
   }
 
+  /**
+   * Recupera una alerta tras una interrupción (segundo plano o reinicio). `remainingSeconds` ya
+   * descuenta el tiempo transcurrido; si llegó a 0 en una cuenta, pasa directo a Alerta activa.
+   */
+  restore(state: AlertState, reason: AlertReason, remainingSeconds: number): void {
+    this.tracer(`restore state=${state} reason=${reason} remaining=${remainingSeconds}`);
+    this.clearAutoAlertTimer();
+    this.clearSosHoldTimer();
+    this.clearCountdownTimer();
+    this.clearNoticeTimer();
+    if (state === AlertState.None) {
+      return;
+    }
+    this.reason = reason;
+    if (state === AlertState.AlertSent || remainingSeconds <= 0) {
+      this.enterAlertSent();
+      return;
+    }
+    this.state = state;
+    this.startedAt = this.clock.now();
+    const total: number = state === AlertState.SosCountdown ? SOS_COUNTDOWN_SECONDS : ARE_YOU_OK_SECONDS;
+    this.remainingSeconds = Math.min(total, Math.ceil(remainingSeconds));
+    this.setEffect(state === AlertState.SosCountdown ? EmergencyEffect.SosEnter : EmergencyEffect.AreYouOkEnter);
+    this.scheduleCountdownTick();
+    this.notify();
+  }
+
   dispose(): void {
     this.clearAutoAlertTimer();
     this.clearSosHoldTimer();
@@ -449,7 +478,12 @@ export class EmergencyMachine {
       if (this.state !== AlertState.AlertSent || this.onWay) {
         return;
       }
-      this.nextNoticeSeconds = this.nextNoticeSeconds > 0 ? this.nextNoticeSeconds - 1 : this.noticeSeconds;
+      if (this.nextNoticeSeconds > 1) {
+        this.nextNoticeSeconds -= 1;
+      } else {
+        this.nextNoticeSeconds = this.noticeSeconds;
+        this.setEffect(EmergencyEffect.NoticeDue);
+      }
       this.notify();
       this.scheduleNoticeTick();
     }, 1000);

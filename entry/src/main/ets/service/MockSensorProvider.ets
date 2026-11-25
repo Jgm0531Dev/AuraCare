@@ -33,7 +33,12 @@ export class MockSensorProvider implements SensorProvider {
       spo2: this.variant.spo2,
       temperature: this.variant.temperature,
       movementLabel: this.variant.movementLabel,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      // Datos de demostración: el motor de anomalías los trata igual que los reales.
+      heartRateValid: true,
+      motionValid: true,
+      immobile: this.variant.state === PulseState.Critical,
+      peakG: 1
     };
   }
 

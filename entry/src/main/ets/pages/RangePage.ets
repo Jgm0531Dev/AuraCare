@@ -16,8 +16,6 @@ const TAG: string = 'RangePage';
 /** Dominio único de la barra: 30-120 BPM -> 0-1 (58-92 queda centrado). */
 const DOMAIN_MIN_BPM: number = 30;
 const DOMAIN_MAX_BPM: number = 120;
-const PERSONAL_MIN_BPM: number = 58;
-const PERSONAL_MAX_BPM: number = 92;
 const GENERAL_MIN_BPM: number = 60;
 const GENERAL_MAX_BPM: number = 100;
 /** Fuera del rango por menos de esto: naranja; por esto o más: rojo. */
@@ -57,16 +55,22 @@ export struct RangePage {
     })
   }
 
+  /** v1.0.1: "aprendiendo" hasta reunir lecturas reales suficientes (RangeModel, persistido). */
   private isFirstUse(): boolean {
-    return appStore.mode === 'first-use';
+    return appStore.mode === 'first-use' || !appStore.rangeReady;
   }
 
   private rangeMin(): number {
-    return this.isFirstUse() ? GENERAL_MIN_BPM : PERSONAL_MIN_BPM;
+    return this.isFirstUse() ? GENERAL_MIN_BPM : appStore.rangeMin;
   }
 
   private rangeMax(): number {
-    return this.isFirstUse() ? GENERAL_MAX_BPM : PERSONAL_MAX_BPM;
+    return this.isFirstUse() ? GENERAL_MAX_BPM : appStore.rangeMax;
+  }
+
+  /** Minutos de lecturas reunidos (lecturas a 1 Hz). */
+  private learnedMinutes(): number {
+    return Math.floor(appStore.rangeSamples / 60);
   }
 
   /** ÚNICO punto sobre la curva (vp, origen arriba-izquierda del Canvas). Bezier cuadrática simétrica. */
@@ -84,7 +88,7 @@ export struct RangePage {
   }
 
   private stateColor(): Resource {
-    if (this.isFirstUse()) {
+    if (this.isFirstUse() || !appStore.heartRateValid) {
       return $r('app.color.muted');
     }
     const bpm: number = appStore.bpm;
@@ -133,6 +137,10 @@ export struct RangePage {
     this.strokeArc(0, 1, this.rgba($r('app.color.gray_3a3a40')));
     this.strokeArc(bpmToFraccion(this.rangeMin()), bpmToFraccion(this.rangeMax()),
       this.rgba($r('app.color.green'), this.isFirstUse() ? 0.4 : 1));
+    // Sin lectura de pulso no hay marcador.
+    if (!appStore.heartRateValid) {
+      return;
+    }
     // Fuera del dominio, el clamp de bpmToFraccion deja el marcador en el extremo.
     const marker: ArcPoint = this.puntoEnArco(bpmToFraccion(appStore.bpm));
     ctx.beginPath();
@@ -146,7 +154,7 @@ export struct RangePage {
 
   /** Clave de redibujo: si cambia, el Canvas se recrea y onReady vuelve a dibujar (sin depender de @Monitor). */
   private drawKey(): string {
-    return `${appStore.bpm}|${this.isFirstUse()}|${dimens.scale}`;
+    return `${appStore.bpm}|${appStore.heartRateValid}|${this.isFirstUse()}|${appStore.rangeMin}|${appStore.rangeMax}|${dimens.scale}`;
   }
 
   @Builder
@@ -170,7 +178,8 @@ export struct RangePage {
   rangeBody() {
     // Presupuesto (base, cuerpo 296): héroe 46 + 8 + barra 70 + 8 + 3 x 30 + 2 x 6 = 234.
     Column({ space: dimens.u(8) }) {
-      Text(this.isFirstUse() ? $r('app.string.extra_range_general_compact') : $r('app.string.extra_range_normal_compact'))
+      Text(this.isFirstUse() ? $r('app.string.extra_range_general_compact') :
+        $r('app.string.range_personal_compact', appStore.rangeMin, appStore.rangeMax))
         .fontSize(dimens.u(HERO_BASE))
         .maxFontSize(dimens.u(HERO_BASE))
         .minFontSize(dimens.u(DesignTokens.fsBody))
@@ -188,16 +197,17 @@ export struct RangePage {
             .fontSize(dimens.u(DesignTokens.fsLabel))
             .fontColor($r('app.color.text_primary'))
             .maxLines(1)
-          Text($r('app.string.range_days_left'))
+          Text($r('app.string.range_learning_progress', this.learnedMinutes()))
             .fontSize(dimens.u(DesignTokens.fsMin))
             .fontColor($r('app.color.muted'))
             .maxLines(1)
         } else {
-          Text($r('app.string.extra_range_current_short', appStore.bpm))
+          Text(appStore.heartRateValid ? $r('app.string.extra_range_current_short', appStore.bpm) :
+            $r('app.string.pulse_no_reading'))
             .fontSize(dimens.u(DesignTokens.fsBody))
             .fontColor(this.stateColor())
             .maxLines(1)
-          Text($r('app.string.extra_range_resting_short'))
+          Text($r('app.string.range_minutes_short', this.learnedMinutes()))
             .fontSize(dimens.u(DesignTokens.fsMin))
             .fontColor($r('app.color.text_secondary'))
             .maxLines(1)

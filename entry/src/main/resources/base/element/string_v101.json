@@ -1,0 +1,168 @@
+{
+  "string": [
+    {
+      "name": "monitor_demo",
+      "value": "DEMO · DATOS DE PRUEBA"
+    },
+    {
+      "name": "monitor_permission",
+      "value": "ACTIVA EL PERMISO"
+    },
+    {
+      "name": "monitor_no_sensor",
+      "value": "SIN SENSOR DE PULSO"
+    },
+    {
+      "name": "monitor_waiting",
+      "value": "ESPERANDO LECTURA"
+    },
+    {
+      "name": "pulse_no_reading",
+      "value": "Sin lectura"
+    },
+    {
+      "name": "range_personal_compact",
+      "value": "%d-%d BPM"
+    },
+    {
+      "name": "range_learning_progress",
+      "value": "%d de 10 min de lecturas"
+    },
+    {
+      "name": "range_minutes_short",
+      "value": "%d min de lecturas reales"
+    },
+    {
+      "name": "demo_mode",
+      "value": "Modo demostración"
+    },
+    {
+      "name": "demo_mode_desc",
+      "value": "Datos de prueba para ver el flujo sin sensores"
+    },
+    {
+      "name": "demo_mode_on_desc",
+      "value": "Activo: el pulso mostrado NO es real"
+    },
+    {
+      "name": "demo_mode_pick",
+      "value": "Elige el pulso de prueba. Crítico abre ¿Estás bien? en unos 10 s."
+    },
+    {
+      "name": "edit_contact_title",
+      "value": "Editar contacto"
+    },
+    {
+      "name": "edit_keep_name",
+      "value": "Mantener: %s"
+    },
+    {
+      "name": "pick_from_contacts",
+      "value": "Desde mis contactos"
+    },
+    {
+      "name": "pick_failed",
+      "value": "No se eligió un contacto con teléfono"
+    },
+    {
+      "name": "permission_health_reason",
+      "value": "Lee tu ritmo cardiaco en el reloj para detectar valores anormales y calcular tu rango normal. Los datos no salen del reloj."
+    },
+    {
+      "name": "permission_accelerometer_reason",
+      "value": "Detecta si estás inmóvil o si sufriste una caída para avisarte. Los datos no salen del reloj."
+    },
+    {
+      "name": "permission_location_reason",
+      "value": "Si lo activas en Ajustes, muestra tu ubicación en el reloj durante una alerta para que puedas leerla al 911. No se envía a nadie."
+    },
+    {
+      "name": "notif_alert_title",
+      "value": "AuraCare · Alerta"
+    },
+    {
+      "name": "notif_are_you_ok_text",
+      "value": "¿Estás bien? Abre AuraCare para responder."
+    },
+    {
+      "name": "notif_sos_text",
+      "value": "SOS activado. Abre AuraCare para cancelar."
+    },
+    {
+      "name": "notif_alert_text",
+      "value": "Alerta activa. Abre AuraCare para llamar a tu contacto o al 911."
+    },
+    {
+      "name": "alert_banner_honest",
+      "value": "No se envían mensajes automáticos. Llama desde aquí a tu contacto o al 911."
+    },
+    {
+      "name": "silence_alarm",
+      "value": "Silenciar alarma"
+    },
+    {
+      "name": "help_coming",
+      "value": "Ya viene ayuda"
+    },
+    {
+      "name": "help_coming_undo",
+      "value": "Reanudar recordatorios"
+    },
+    {
+      "name": "reminders_paused",
+      "value": "Recordatorios en pausa"
+    },
+    {
+      "name": "location_off",
+      "value": "Ubicación desactivada"
+    },
+    {
+      "name": "location_locating",
+      "value": "Buscando ubicación…"
+    },
+    {
+      "name": "location_no_permission",
+      "value": "Ubicación sin permiso"
+    },
+    {
+      "name": "location_system_off",
+      "value": "Ubicación del reloj apagada"
+    },
+    {
+      "name": "location_timeout",
+      "value": "Sin ubicación (tiempo agotado)"
+    },
+    {
+      "name": "location_failed",
+      "value": "Ubicación no disponible"
+    },
+    {
+      "name": "location_not_sent",
+      "value": "Solo en este reloj, no se envía"
+    },
+    {
+      "name": "location_setting",
+      "value": "Ubicación en alertas"
+    },
+    {
+      "name": "location_setting_desc",
+      "value": "Mostrarla en el reloj para leerla al 911"
+    },
+    {
+      "name": "location_setting_denied",
+      "value": "Permiso denegado: actívalo en Ajustes del reloj"
+    },
+    {
+      "name": "call_unavailable",
+      "value": "Este reloj no puede llamar. Marca desde otro teléfono:"
+    },
+    {
+      "name": "notice_desc_v101",
+      "value": "Repite la alarma si sigue activa"
+    },
+    {
+      "name": "exercise_desc_v101",
+      "value": "Ignora el pulso alto al moverte"
+    }
+  ]
+}

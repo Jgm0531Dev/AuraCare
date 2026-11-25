@@ -9,7 +9,7 @@ import { ScreenScaffold } from '../components/ScreenScaffold';
 import { HeartRateGauge } from '../components/HeartRateGauge';
 import { SensorChip } from '../components/SensorChip';
 import { SosButton } from '../components/SosButton';
-import { DEMO_GESTURE_ENABLED, DEMO_VISIBLE } from '../util/AppConfig';
+import { DEMO_VISIBLE } from '../util/AppConfig';
 import { sensorService } from '../service/SensorService';
 
 const TAG: string = 'MonitorPage';
@@ -33,17 +33,36 @@ export struct MonitorPage {
     if (appStore.mode === 'offline') {
       return $r('app.string.monitor_offline');
     }
-    // Honestidad: con el MockSensorProvider activo no es una medición en vivo.
-    return sensorService.isSimulated() ? $r('app.string.monitor_simulated') : $r('app.string.monitor_live');
+    // Honestidad: con "Modo demostración" son datos de prueba; sin lectura real no se dice "en vivo".
+    if (sensorService.isSimulated()) {
+      return $r('app.string.monitor_demo');
+    }
+    if (appStore.capabilities.heartRate === SensorStatus.PermissionRequired) {
+      return $r('app.string.monitor_permission');
+    }
+    if (appStore.capabilities.heartRate === SensorStatus.Unavailable) {
+      return $r('app.string.monitor_no_sensor');
+    }
+    return appStore.heartRateValid ? $r('app.string.monitor_live') : $r('app.string.monitor_waiting');
   }
 
   private liveDotColor(): Resource {
-    return appStore.mode === 'offline' ? $r('app.color.orange') : $r('app.color.accion_principal');
+    if (sensorService.isSimulated() || appStore.mode === 'offline') {
+      return $r('app.color.orange');
+    }
+    return appStore.heartRateValid ? $r('app.color.accion_principal') : $r('app.color.muted');
+  }
+
+  private hasPulse(): boolean {
+    return !this.isFirstUse() && appStore.heartRateValid;
   }
 
   private stateLabel(): Resource {
     if (this.isFirstUse()) {
       return $r('app.string.calibrating_ellipsis');
+    }
+    if (!appStore.heartRateValid) {
+      return $r('app.string.pulse_no_reading');
     }
     if (appStore.pulseState === PulseState.Critical) {
       return $r('app.string.pulse_critical');
@@ -242,18 +261,12 @@ export struct MonitorPage {
         .width(dimens.u(DesignTokens.monitorLiveRowWidthBase))
         .height(dimens.u(DesignTokens.monitorLiveRowBase))
         .justifyContent(FlexAlign.Center)
-        // Acceso de revisores: la pulsación larga de 3 s abre el panel también con RELEASE_MODE.
-        .gesture(LongPressGesture({ duration: 3000 }).onAction((_event: GestureEvent): void => {
-          if (!DEMO_GESTURE_ENABLED) {
-            return;
-          }
-          this.onOpenDemo();
-        }))
+        // v1.0.1: sin gesto oculto. Los datos de prueba se activan en Ajustes > Modo demostración.
 
         HeartRateGauge({
           bpm: appStore.bpm,
           state: appStore.pulseState,
-          firstUse: this.isFirstUse(),
+          firstUse: !this.hasPulse(),
           sizeBase: this.arcSizeBase()
         })
           .margin({ top: this.gap(DesignTokens.monitorGapSmallBase) })

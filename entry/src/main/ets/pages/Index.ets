@@ -33,12 +33,14 @@ struct Index {
   @Local alertState: AlertState = AlertState.None;
   @Local dialogVisible: boolean = false;
   @Local callingVisible: boolean = false;
+  @Local callFailedVisible: boolean = false;
   private unsubscribeUi: () => void = (): void => {};
 
   private syncFromStore(event: string): void {
     this.alertState = appStore.emergency.state;
     this.dialogVisible = appStore.dialogOpen;
     this.callingVisible = appStore.callingVisible;
+    this.callFailedVisible = appStore.callFailedVisible;
     if (DEBUG_LAYOUT) {
       Logger.info('Index',
         `[trace] espejo actualizado (${event}): alert=${this.alertState} dialog=${this.dialogVisible} calling=${this.callingVisible} navStackDepth=${this.pathStack.size()}`);
@@ -96,11 +98,19 @@ struct Index {
     const context: Context | undefined = this.getUIContext().getHostContext();
     if (context !== undefined) {
       vibrationService.init(context);
+      sensorService.init(context);
     }
-    sensorService.start(appStore);
     emergencyService.start(appStore);
     if (context !== undefined) {
+      // Contactos y Ajustes persistidos antes de arrancar los sensores (modo demostración incluido).
       emergencyService.loadContacts(context);
+    }
+    sensorService.start(appStore);
+    if (context !== undefined) {
+      // READ_HEALTH_DATA (user_grant): sin permiso el pulso queda "sin lectura", nunca simulado.
+      sensorService.requestPermissions(context).catch((err: Object): void => {
+        Logger.error('Index', 'requestPermissions falló', err);
+      });
     }
     this.unsubscribeUi = emergencyService.onUiChange((event: string): void => {
       this.syncFromStore(event);
@@ -398,6 +408,44 @@ struct Index {
           .borderRadius(dimens.radiusChip())
         }
         .width('100%')
+        .alignItems(HorizontalAlign.Center)
+        .margin({ top: dimens.cqw(DesignTokens.toastTopCqw) })
+        .hitTestBehavior(HitTestMode.Transparent)
+      }
+
+      // El reloj no puede llamar: se dice y se muestra el número para marcarlo desde otro teléfono.
+      if (this.callFailedVisible) {
+        Column() {
+          Button() {
+            Column({ space: 0 }) {
+              Text($r('app.string.call_unavailable'))
+                .fontSize(dimens.u(DesignTokens.fsMin))
+                .fontColor($r('app.color.orange'))
+                .maxLines(2)
+                .textAlign(TextAlign.Center)
+              Text(appStore.callFailedNumber)
+                .fontSize(dimens.u(DesignTokens.fsLabel))
+                .fontColor($r('app.color.text_primary'))
+                .fontWeight(FontWeight.Bold)
+                .maxLines(1)
+            }
+            .padding({
+              left: dimens.cqw(DesignTokens.infoCardPaddingCqw),
+              right: dimens.cqw(DesignTokens.infoCardPaddingCqw),
+              top: dimens.cqw(DesignTokens.chipPaddingCqw),
+              bottom: dimens.cqw(DesignTokens.chipPaddingCqw)
+            })
+          }
+          .constraintSize({ minHeight: dimens.touchMin() })
+          .backgroundColor($r('app.color.card'))
+          .borderRadius(dimens.radiusChip())
+          .accessibilityText($r('app.string.call_unavailable'))
+          .onClick((): void => {
+            emergencyService.hideCallFailed();
+          })
+        }
+        .width('100%')
+        .padding({ left: dimens.safeLeft(), right: dimens.safeRight() })
         .alignItems(HorizontalAlign.Center)
         .margin({ top: dimens.cqw(DesignTokens.toastTopCqw) })
         .hitTestBehavior(HitTestMode.Transparent)

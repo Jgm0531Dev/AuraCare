@@ -4,6 +4,7 @@ import { ScreenScaffold } from '../components/ScreenScaffold';
 import { EmergencyContact } from '../model/EmergencyContact';
 import { DialogKind, appStore } from '../state/AppStore';
 import { emergencyService } from '../service/EmergencyService';
+import { isUserContact } from '../service/ContactRepository';
 import { DesignTokens } from '../util/DesignTokens';
 import { DEBUG_LAYOUT, dimens } from '../util/Dimens';
 import { Logger } from '../util/Logger';
@@ -31,7 +32,12 @@ export struct ContactsPage {
     this.cancelPress();
     this.pressTimer = setTimeout((): void => {
       this.pressTimer = undefined;
-      emergencyService.openDialog(DialogKind.RemoveContact, contact.id, contact.name);
+      // Contacto real: Editar (desde ahí también se puede borrar). Ejemplo: solo borrar.
+      if (isUserContact(contact)) {
+        emergencyService.requestEditContact(contact.id);
+      } else {
+        emergencyService.openDialog(DialogKind.RemoveContact, contact.id, contact.name);
+      }
     }, LONG_PRESS_MS);
   }
 

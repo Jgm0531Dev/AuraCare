@@ -43,6 +43,9 @@ export struct SensorsPage {
   }
 
   private pulseStatus(): Resource {
+    if (!appStore.heartRateValid) {
+      return $r('app.string.pulse_no_reading');
+    }
     if (appStore.pulseState === PulseState.Critical) {
       return $r('app.string.pulse_critical');
     }
@@ -98,7 +101,7 @@ export struct SensorsPage {
     SensorCard({
       symbol: $r('sys.symbol.heart_fill'),
       name: $r('app.string.sensor_heart_rate'),
-      value: $r('app.string.frequency_value', appStore.bpm),
+      value: appStore.heartRateValid ? $r('app.string.frequency_value', appStore.bpm) : $r('app.string.value_dash'),
       status: this.pulseStatus(),
       valueColor: $r('app.color.text_primary'),
       statusColor: appStore.stateColor,
@@ -118,7 +121,7 @@ export struct SensorsPage {
       valueColor: this.spo2Color(),
       statusColor: this.spo2StatusColor(),
       variant: appStore.capabilities.spo2,
-      simulated: true
+      simulated: sensorService.isSimulated()
     })
   }
 
@@ -133,7 +136,7 @@ export struct SensorsPage {
       valueColor: this.tempColor(),
       statusColor: this.tempStatusColor(),
       variant: appStore.capabilities.temperature,
-      simulated: true
+      simulated: sensorService.isSimulated()
     })
   }
 
@@ -157,7 +160,7 @@ export struct SensorsPage {
       symbol: $r('sys.symbol.location_north_up_right'),
       name: $r('app.string.sensor_location'),
       value: $r('app.string.sensor_location_share'),
-      status: $r('app.string.sensor_ready'),
+      status: appStore.settings.locationEnabled ? $r('app.string.sensor_ready') : $r('app.string.location_off'),
       valueColor: $r('app.color.text_primary'),
       statusColor: $r('app.color.green'),
       variant: appStore.capabilities.location,

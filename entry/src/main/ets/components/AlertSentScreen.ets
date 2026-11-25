@@ -5,9 +5,13 @@ import { emergencyService } from '../service/EmergencyService';
 import { DesignTokens } from '../util/DesignTokens';
 import { dimens } from '../util/Dimens';
 import { ScreenScaffold } from './ScreenScaffold';
-import { ALERTS_SIMULATED } from '../util/AppConfig';
+import { PhoneIcon } from './PhoneIcon';
+import { LocationStatus } from '../service/LocationService';
 
-/** Pantalla de alerta enviada, pendiente o sin contactos. Nunca confirma un envío ficticio. */
+/**
+ * Alerta activa (v1.0.1). Lo que ocurre de verdad: alarma y notificación en el reloj, botones que
+ * abren el marcador y ubicación opcional mostrada solo aquí. No se envía ningún mensaje automático.
+ */
 @ComponentV2
 export struct AlertSentScreen {
   private hasContacts(): boolean {
@@ -25,7 +29,7 @@ export struct AlertSentScreen {
     if (this.isOffline()) {
       return $r('app.string.alert_pending');
     }
-    return ALERTS_SIMULATED ? $r('app.string.alert_simulated_title') : $r('app.string.alert_sent');
+    return $r('app.string.alert_sent');
   }
 
   private headerReason(): Resource {
@@ -47,46 +51,38 @@ export struct AlertSentScreen {
   }
 
   private headerColor(): Resource {
-    return this.hasContacts() && !this.isOffline() ? $r('app.color.green') : $r('app.color.orange');
+    return $r('app.color.red');
   }
 
   private headerIcon(): Resource {
-    return this.hasContacts() && !this.isOffline() ? $r('app.string.icon_check') : $r('app.string.icon_warning');
+    return $r('app.string.icon_warning');
   }
 
-  private contactStatus(contact: EmergencyContact): Resource {
-    if (ALERTS_SIMULATED && !this.isOffline()) {
-      return $r('app.string.contact_simulated');
+  private locationText(): Resource | string {
+    const status: string = appStore.locationStatus;
+    if (status === LocationStatus.Found) {
+      return `${appStore.latitude.toFixed(5)}, ${appStore.longitude.toFixed(5)}`;
     }
-    if (this.isOffline()) {
-      return $r('app.string.contact_pending');
+    if (status === LocationStatus.Locating) {
+      return $r('app.string.location_locating');
     }
-    if (contact.step >= 2) {
-      return $r('app.string.contact_on_way');
+    if (status === LocationStatus.NoPermission) {
+      return $r('app.string.location_no_permission');
     }
-    if (contact.step === 1) {
-      return $r('app.string.contact_received');
+    if (status === LocationStatus.SystemDisabled) {
+      return $r('app.string.location_system_off');
     }
-    return $r('app.string.contact_sent');
+    if (status === LocationStatus.Timeout) {
+      return $r('app.string.location_timeout');
+    }
+    if (status === LocationStatus.Failed) {
+      return $r('app.string.location_failed');
+    }
+    return $r('app.string.location_off');
   }
 
-  private statusColor(contact: EmergencyContact): Resource {
-    if (this.isOffline()) {
-      return $r('app.color.orange');
-    }
-    if (contact.step >= 1) {
-      return $r('app.color.green');
-    }
-    return $r('app.color.muted');
-  }
-
-  private onWayName(): string {
-    for (const contact of appStore.contacts) {
-      if (contact.step >= 2) {
-        return contact.name;
-      }
-    }
-    return '';
+  private locationColor(): Resource {
+    return appStore.locationStatus === LocationStatus.Found ? $r('app.color.green') : $r('app.color.muted');
   }
 
   private formatTime(seconds: number): string {
@@ -120,11 +116,19 @@ export struct AlertSentScreen {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .layoutWeight(1)
 
-      Text(this.contactStatus(contact))
-        .fontSize(dimens.u(DesignTokens.fsMin))
-        .fontColor(this.statusColor(contact))
-        .maxLines(1)
-        .flexShrink(0)
+      // Abre el marcador del sistema con el número (el usuario confirma la llamada).
+      Button() {
+        PhoneIcon()
+      }
+      .width(dimens.touchMin())
+      .height(dimens.touchMin())
+      .borderRadius(dimens.touchMin() / 2)
+      .backgroundColor($r('app.color.green'))
+      .flexShrink(0)
+      .accessibilityText($r('app.string.a11y_call_contact', contact.name))
+      .onClick((): void => {
+        emergencyService.callContact(contact);
+      })
     }
     .width('100%')
     .height(dimens.u(DesignTokens.alertRowHeightBase))
@@ -180,17 +184,15 @@ export struct AlertSentScreen {
         .textAlign(TextAlign.Center)
         .width('100%')
 
-      // Aviso fijo (no hace scroll) mientras el envío sea simulado.
-      if (ALERTS_SIMULATED) {
-        Text($r('app.string.alert_simulated_banner'))
-          .fontSize(dimens.u(DesignTokens.fsMin))
-          .lineHeight(dimens.u(DesignTokens.alertBannerLineBase))
-          .fontColor($r('app.color.orange'))
-          .maxLines(DesignTokens.alertBannerMaxLines)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .textAlign(TextAlign.Center)
-          .width('100%')
-      }
+      // Aviso fijo (no hace scroll): la app no envía mensajes automáticos.
+      Text($r('app.string.alert_banner_honest'))
+        .fontSize(dimens.u(DesignTokens.fsMin))
+        .lineHeight(dimens.u(DesignTokens.alertBannerLineBase))
+        .fontColor($r('app.color.orange'))
+        .maxLines(DesignTokens.alertBannerMaxLines)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .textAlign(TextAlign.Center)
+        .width('100%')
     }
     .width('100%')
     .height('100%')
@@ -228,13 +230,28 @@ export struct AlertSentScreen {
               .fontWeight(FontWeight.Bold)
               .maxLines(1)
           }
-          Text(ALERTS_SIMULATED ? $r('app.string.location_simulated') : $r('app.string.location_shared'))
+          Text(this.locationText())
             .fontSize(dimens.u(DesignTokens.fsMin))
-            .fontColor($r('app.color.green'))
+            .fontColor(this.locationColor())
             .maxLines(1)
+          if (appStore.locationStatus === LocationStatus.Found && appStore.address.length > 0) {
+            Text(appStore.address)
+              .fontSize(dimens.u(DesignTokens.fsMin))
+              .fontColor($r('app.color.text_secondary'))
+              .maxLines(2)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .textAlign(TextAlign.Center)
+          }
+          if (appStore.locationStatus === LocationStatus.Found) {
+            Text($r('app.string.location_not_sent'))
+              .fontSize(dimens.u(DesignTokens.fsMin))
+              .fontColor($r('app.color.muted'))
+              .maxLines(1)
+          }
         }
         .width('100%')
-        .height(dimens.u(DesignTokens.alertRowHeightBase))
+        .constraintSize({ minHeight: dimens.u(DesignTokens.alertRowHeightBase) })
+        .padding({ top: dimens.u(DesignTokens.chipGapBase), bottom: dimens.u(DesignTokens.chipGapBase) })
         .justifyContent(FlexAlign.Center)
         .backgroundColor($r('app.color.card'))
         .borderRadius(dimens.radiusCard())
@@ -244,17 +261,11 @@ export struct AlertSentScreen {
             this.contactRow(contact)
           }, (contact: EmergencyContact): string => `${contact.id}-${contact.step}`)
 
-          Text($r('app.string.next_notice_time', this.formatTime(appStore.nextNoticeSeconds)))
+          Text(appStore.onWay ? $r('app.string.reminders_paused') :
+            $r('app.string.next_notice_time', this.formatTime(appStore.nextNoticeSeconds)))
             .fontSize(dimens.u(DesignTokens.fsMin))
-            .fontColor($r('app.color.text_secondary'))
+            .fontColor(appStore.onWay ? $r('app.color.green') : $r('app.color.text_secondary'))
             .maxLines(1)
-          if (this.onWayName().length > 0) {
-            Text($r('app.string.on_way_name', this.onWayName()))
-              .fontSize(dimens.u(DesignTokens.fsMin))
-              .fontColor($r('app.color.green'))
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
         } else {
           Text($r('app.string.no_emergency_contacts'))
             .fontSize(dimens.u(DesignTokens.fsMin))
@@ -262,6 +273,17 @@ export struct AlertSentScreen {
             .textAlign(TextAlign.Center)
         }
 
+        if (!appStore.alarmSilenced) {
+          this.actionButton($r('app.string.silence_alarm'), $r('app.color.orange'), (): void => {
+            emergencyService.silenceAlarm();
+          })
+        }
+        if (this.hasContacts()) {
+          this.actionButton(appStore.onWay ? $r('app.string.help_coming_undo') : $r('app.string.help_coming'),
+            $r('app.color.card'), (): void => {
+              emergencyService.markHelpComing(!appStore.onWay);
+            })
+        }
         this.actionButton($r('app.string.call_911_action'), $r('app.color.red'), (): void => {
           emergencyService.openDialog(DialogKind.Call911);
         })
@@ -295,9 +317,7 @@ export struct AlertSentScreen {
       logTag: 'AlertSentScreen',
       scaffoldBackground: $r('app.color.surface_deep'),
       // 64 + aviso de hasta 3 x 30 = 154 base; el cuerpo con scroll conserva ~182.
-      headerHeightBase: ALERTS_SIMULATED ?
-        DesignTokens.alertHeaderBase + DesignTokens.alertBannerLineBase * DesignTokens.alertBannerMaxLines :
-        DesignTokens.alertHeaderBase,
+      headerHeightBase: DesignTokens.alertHeaderBase + DesignTokens.alertBannerLineBase * DesignTokens.alertBannerMaxLines,
       headerContent: (): void => {
         this.alertHeader();
       },
