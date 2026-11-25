@@ -1,22 +1,12 @@
 import { preferences } from '@kit.ArkData';
 import { Context } from '@kit.AbilityKit';
 import { AlertState } from '../model/Alert';
-import { AlertReason } from '../model/AlertReason';
+import { StoredAlert } from '../state/AlertRecovery'; // forma persistida (TS puro, testeable)
 import { Logger } from '../util/Logger';
 
 const TAG: string = 'AlertStateRepository';
 const STORE_NAME: string = 'auracare_alert';
 const KEY_ALERT: string = 'alert';
-
-/** Alerta en curso persistida para recuperarla tras segundo plano o reinicio. */
-export interface StoredAlert {
-  state: AlertState;
-  reason: AlertReason;
-  /** Segundos restantes de la cuenta en el momento de guardar (0 en Alerta activa). */
-  remainingSeconds: number;
-  alertBpm: number;
-  savedAt: number;
-}
 
 class AlertStateRepository {
   private store: preferences.Preferences | undefined = undefined;

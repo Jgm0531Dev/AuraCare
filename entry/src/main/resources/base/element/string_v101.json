@@ -2,7 +2,7 @@
   "string": [
     {
       "name": "monitor_demo",
-      "value": "DEMO · DATOS DE PRUEBA"
+      "value": "DEMO · PRUEBA"
     },
     {
       "name": "monitor_permission",
@@ -70,7 +70,7 @@
     },
     {
       "name": "permission_accelerometer_reason",
-      "value": "Detecta si estás inmóvil o si sufriste una caída para avisarte. Los datos no salen del reloj."
+      "value": "Detecta si estás inmóvil e intenta detectar caídas para avisarte en el reloj. Los datos no salen del reloj."
     },
     {
       "name": "permission_location_reason",
@@ -90,11 +90,11 @@
     },
     {
       "name": "notif_alert_text",
-      "value": "Alerta activa. Abre AuraCare para llamar a tu contacto o al 911."
+      "value": "Alerta activa. Abre AuraCare para abrir el marcador con tu contacto o el 911."
     },
     {
       "name": "alert_banner_honest",
-      "value": "No se envían mensajes automáticos. Llama desde aquí a tu contacto o al 911."
+      "value": "No se envían mensajes automáticos. Abre el marcador desde aquí y confirma tú la llamada."
     },
     {
       "name": "silence_alarm",
@@ -130,7 +130,7 @@
     },
     {
       "name": "location_timeout",
-      "value": "Sin ubicación (tiempo agotado)"
+      "value": "No se pudo obtener la ubicación"
     },
     {
       "name": "location_failed",
@@ -138,7 +138,7 @@
     },
     {
       "name": "location_not_sent",
-      "value": "Solo en este reloj, no se envía"
+      "value": "Solo se muestra aquí. No se envía."
     },
     {
       "name": "location_setting",
@@ -154,7 +154,7 @@
     },
     {
       "name": "call_unavailable",
-      "value": "Este reloj no puede llamar. Marca desde otro teléfono:"
+      "value": "Este reloj no puede abrir llamadas ahora. Marca desde tu teléfono:"
     },
     {
       "name": "notice_desc_v101",
@@ -163,6 +163,50 @@
     {
       "name": "exercise_desc_v101",
       "value": "Ignora el pulso alto al moverte"
+    },
+    {
+      "name": "medical_unavailable_title",
+      "value": "No disponible en esta versión"
+    },
+    {
+      "name": "medical_unavailable_desc",
+      "value": "La ficha médica aún no se puede registrar."
+    },
+    {
+      "name": "a11y_movement_chip",
+      "value": "Movimiento detectado por el acelerómetro"
+    },
+    {
+      "name": "location_value_optional",
+      "value": "Opcional"
+    },
+    {
+      "name": "location_status_on",
+      "value": "Activa · solo en el reloj"
+    },
+    {
+      "name": "give_permission",
+      "value": "Dar permiso"
+    },
+    {
+      "name": "give_permission_a11y",
+      "value": "Dar permiso para leer el ritmo cardiaco"
+    },
+    {
+      "name": "health_permission_steps",
+      "value": "Para leer tu pulso: Ajustes del reloj > Aplicaciones > AuraCare > Permisos > Datos de salud > Permitir. Toca para cerrar."
+    },
+    {
+      "name": "location_service_unavailable",
+      "value": "Servicio de ubicación no disponible"
+    },
+    {
+      "name": "contact_no_phone",
+      "value": "Este contacto no tiene número. Edítalo para añadirlo. Toca para cerrar."
+    },
+    {
+      "name": "monitoring_scope",
+      "value": "AuraCare vigila solo mientras la app está abierta y la pantalla encendida."
     }
   ]
 }

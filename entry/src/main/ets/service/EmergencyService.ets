@@ -24,11 +24,11 @@ import { sensorService } from './SensorService';
 import { alarmService } from './AlarmService';
 import { notificationService } from './NotificationService';
 import { LocationResult, LocationStatus, locationService } from './LocationService';
-import { alertStateRepository, StoredAlert } from './AlertStateRepository';
+import { alertStateRepository } from './AlertStateRepository';
+import { planRecovery, RecoveryPlan } from '../state/AlertRecovery';
 
 const TAG: string = 'EmergencyService';
 const TOAST_MS: number = 2000;
-const CALLING_MS: number = 2500;
 const EMERGENCY_NUMBER: string = '911';
 
 /** Aviso explícito a la raíz (Index), que no re-renderiza con lecturas directas del store. */
@@ -39,7 +39,6 @@ class EmergencyService {
   private readonly machine: EmergencyMachine = new EmergencyMachine(this.clock);
   private store: AppStore | undefined = undefined;
   private toastTimer: number | undefined = undefined;
-  private callingTimer: number | undefined = undefined;
   private lastEffectToken: number = 0;
   private uiListeners: UiListener[] = [];
   private context: Context | undefined = undefined;
@@ -60,7 +59,7 @@ class EmergencyService {
     const store: AppStore | undefined = this.store;
     if (DEBUG_LAYOUT && store !== undefined) {
       Logger.info(TAG,
-        `[trace] store escrito (${event}): alert=${store.emergency.state} reason=${store.emergency.reason} dialog=${store.dialogOpen} calling=${store.callingVisible} listeners=${this.uiListeners.length}`);
+        `[trace] store escrito (${event}): alert=${store.emergency.state} reason=${store.emergency.reason} dialog=${store.dialogOpen} callFailed=${store.callFailedVisible} listeners=${this.uiListeners.length}`);
     }
     this.uiListeners.forEach((listener: UiListener): void => {
       try {
@@ -288,16 +287,15 @@ class EmergencyService {
 
   /** Reinicio de la app con una alerta en curso: la recupera descontando el tiempo transcurrido. */
   private restorePersistedAlert(): void {
-    const saved: StoredAlert | undefined = alertStateRepository.load();
-    if (saved === undefined) {
+    const plan: RecoveryPlan | undefined = planRecovery(alertStateRepository.load(), Date.now());
+    if (plan === undefined) {
       return;
     }
-    const elapsed: number = Math.max(0, (Date.now() - saved.savedAt) / 1000);
-    Logger.warn(TAG, `alerta recuperada: ${saved.state} hace ${Math.round(elapsed)} s`);
+    Logger.warn(TAG, `alerta recuperada: ${plan.state} restante=${Math.round(plan.remainingSeconds)} s`);
     if (this.store !== undefined) {
-      this.store.alertBpm = saved.alertBpm;
+      this.store.alertBpm = plan.alertBpm;
     }
-    this.machine.restore(saved.state, saved.reason, saved.remainingSeconds - elapsed);
+    this.machine.restore(plan.state, plan.reason, plan.remainingSeconds);
   }
 
   /** EntryAbility.onBackground: guarda la alerta y libera sensores. */
@@ -314,11 +312,20 @@ class EmergencyService {
     if (store === undefined || this.backgroundAt === 0) {
       return;
     }
-    const elapsed: number = Math.max(0, (Date.now() - this.backgroundAt) / 1000);
+    const savedAt: number = this.backgroundAt;
     this.backgroundAt = 0;
     const state: AlertState = store.emergency.state;
     if (state === AlertState.AreYouOk || state === AlertState.SosCountdown) {
-      this.machine.restore(state, store.emergency.reason, store.emergencySeconds - elapsed);
+      const plan: RecoveryPlan | undefined = planRecovery({
+        state: state,
+        reason: store.emergency.reason,
+        remainingSeconds: store.emergencySeconds,
+        alertBpm: store.alertBpm,
+        savedAt: savedAt
+      }, Date.now());
+      if (plan !== undefined) {
+        this.machine.restore(plan.state, plan.reason, plan.remainingSeconds);
+      }
     }
   }
 
@@ -515,12 +522,12 @@ class EmergencyService {
     return true;
   }
 
-  /** Llamar: marcador del sistema con el número (call.makeCall, sin permiso). Ejemplos: simulado. */
+  /** Abrir marcador con el número del contacto (call.makeCall, sin permiso). Nunca simula una llamada. */
   callContact(contact: EmergencyContact): void {
     const phone: string | undefined = contact.phone;
     if (phone === undefined || phone.length === 0) {
-      // Contactos de ejemplo (solo desarrollo): sin número real.
-      this.showCalling(contact.name);
+      // Contactos de ejemplo (solo panel de desarrollo): no hay número que marcar.
+      this.showInfo($r('app.string.contact_no_phone'));
       return;
     }
     this.dial(phone);
@@ -560,6 +567,21 @@ class EmergencyService {
     this.emitUi('callFailed');
   }
 
+  showInfo(message: Resource): void {
+    if (this.store !== undefined) {
+      this.store.infoMessage = message;
+      this.store.infoVisible = true;
+      this.emitUi('info');
+    }
+  }
+
+  hideInfo(): void {
+    if (this.store !== undefined) {
+      this.store.infoVisible = false;
+      this.emitUi('infoHidden');
+    }
+  }
+
   hideCallFailed(): void {
     if (this.store !== undefined) {
       this.store.callFailedVisible = false;
@@ -585,22 +607,6 @@ class EmergencyService {
     this.setOnWay(onWay);
   }
 
-  showCalling(name: Resource | string): void {
-    const store: AppStore | undefined = this.store;
-    if (store === undefined) {
-      return;
-    }
-    store.showCalling(name);
-    this.emitUi('showCalling');
-    if (this.callingTimer !== undefined) {
-      this.clock.clearTimeout(this.callingTimer);
-    }
-    this.callingTimer = this.clock.setTimeout((): void => {
-      this.callingTimer = undefined;
-      store.hideCalling();
-      this.emitUi('hideCalling');
-    }, CALLING_MS);
-  }
 
   dispose(): void {
     vibrationService.dispose();
@@ -609,10 +615,6 @@ class EmergencyService {
     if (this.toastTimer !== undefined) {
       this.clock.clearTimeout(this.toastTimer);
       this.toastTimer = undefined;
-    }
-    if (this.callingTimer !== undefined) {
-      this.clock.clearTimeout(this.callingTimer);
-      this.callingTimer = undefined;
     }
     this.store = undefined;
     this.lastEffectToken = 0;

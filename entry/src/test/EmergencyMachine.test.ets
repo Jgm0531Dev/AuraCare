@@ -239,4 +239,78 @@ export default function emergencyMachineTest() {
       machine.dispose();
     });
   });
+
+  describe('EmergencyMachine v1.0.1 (recordatorio y recuperación)', () => {
+    it('emite NoticeDue al vencer el intervalo y reinicia la cuenta', 0, () => {
+      const clock: FakeClock = new FakeClock();
+      const machine: EmergencyMachine = new EmergencyMachine(clock);
+      const effects: EmergencyEffect[] = [];
+      machine.subscribe((snapshot: EmergencySnapshot): void => {
+        effects.push(snapshot.effect);
+      });
+      machine.setNoticeMinutes(1);
+      machine.dispatch(EmergencyEvent.SimularAlerta);
+      machine.dispatch(EmergencyEvent.Emergency);
+      clock.advance(59000);
+      expect(effects.indexOf(EmergencyEffect.NoticeDue)).assertEqual(-1);
+      clock.advance(1000);
+      expect(machine.getSnapshot().effect).assertEqual(EmergencyEffect.NoticeDue);
+      expect(machine.getSnapshot().nextNoticeSeconds).assertEqual(60);
+      clock.advance(1000);
+      expect(machine.getSnapshot().nextNoticeSeconds).assertEqual(59);
+      machine.dispose();
+    });
+
+    it('sin recordatorios mientras "Ya viene ayuda" está activo', 0, () => {
+      const clock: FakeClock = new FakeClock();
+      const machine: EmergencyMachine = new EmergencyMachine(clock);
+      machine.setNoticeMinutes(1);
+      machine.dispatch(EmergencyEvent.SimularAlerta);
+      machine.dispatch(EmergencyEvent.Emergency);
+      machine.setOnWay(true);
+      clock.advance(180000);
+      expect(machine.getSnapshot().effect === EmergencyEffect.NoticeDue).assertFalse();
+      machine.dispose();
+    });
+
+    it('restore de ¿Estás bien? continúa la cuenta con el tiempo restante', 0, () => {
+      const clock: FakeClock = new FakeClock();
+      const machine: EmergencyMachine = new EmergencyMachine(clock);
+      machine.restore(AlertState.AreYouOk, AlertReason.Caida, 12);
+      expect(machine.getSnapshot().state).assertEqual(AlertState.AreYouOk);
+      expect(machine.getSnapshot().reason).assertEqual(AlertReason.Caida);
+      expect(machine.getSnapshot().remainingSeconds).assertEqual(12);
+      clock.advance(11000);
+      expect(machine.getSnapshot().state).assertEqual(AlertState.AreYouOk);
+      clock.advance(1000);
+      expect(machine.getSnapshot().state).assertEqual(AlertState.AlertSent);
+      machine.dispose();
+    });
+
+    it('restore con la cuenta vencida pasa a Alerta activa', 0, () => {
+      const clock: FakeClock = new FakeClock();
+      const machine: EmergencyMachine = new EmergencyMachine(clock);
+      machine.restore(AlertState.SosCountdown, AlertReason.SosManual, -40);
+      expect(machine.getSnapshot().state).assertEqual(AlertState.AlertSent);
+      expect(machine.getSnapshot().reason).assertEqual(AlertReason.SosManual);
+      machine.dispose();
+    });
+
+    it('restore nunca supera la duración total de la cuenta', 0, () => {
+      const clock: FakeClock = new FakeClock();
+      const machine: EmergencyMachine = new EmergencyMachine(clock);
+      machine.restore(AlertState.SosCountdown, AlertReason.SosManual, 99);
+      expect(machine.getSnapshot().remainingSeconds).assertEqual(SOS_COUNTDOWN_SECONDS);
+      machine.dispose();
+    });
+
+    it('restore de None no cambia nada', 0, () => {
+      const clock: FakeClock = new FakeClock();
+      const machine: EmergencyMachine = new EmergencyMachine(clock);
+      machine.restore(AlertState.None, AlertReason.PulsoCritico, 10);
+      expect(machine.getSnapshot().state).assertEqual(AlertState.None);
+      expect(clock.count()).assertEqual(0);
+      machine.dispose();
+    });
+  });
 }

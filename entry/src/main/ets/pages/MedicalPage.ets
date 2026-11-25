@@ -90,14 +90,14 @@ export struct MedicalPage {
       .width(dimens.cqw(12))
       .height(dimens.cqw(12))
 
-      Text($r('app.string.medical_empty_title'))
+      Text($r('app.string.medical_unavailable_title'))
         .fontSize(dimens.u(DesignTokens.fsLabel))
         .fontColor($r('app.color.text_primary'))
         .fontWeight(FontWeight.Bold)
         .textAlign(TextAlign.Center)
         .maxLines(2)
 
-      Text($r('app.string.extra_medical_empty_desc_short'))
+      Text($r('app.string.medical_unavailable_desc'))
         .fontSize(dimens.u(DesignTokens.fsMin))
         .fontColor($r('app.color.muted'))
         .wordBreak(WordBreak.NORMAL)

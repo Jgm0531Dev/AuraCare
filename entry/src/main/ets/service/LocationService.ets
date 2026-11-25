@@ -15,6 +15,7 @@ export enum LocationStatus {
   Locating = 'locating',
   Found = 'found',
   Timeout = 'timeout',
+  ServiceUnavailable = 'service-unavailable',
   Failed = 'failed'
 }
 
@@ -24,6 +25,34 @@ export interface LocationResult {
   longitude: number;
   /** Dirección legible si el geocodificador respondió (suele requerir red); '' si no. */
   address: string;
+}
+
+/**
+ * Códigos de getCurrentLocation según @ohos.geoLocationManager.d.ts (SDK 6.1.1(24)):
+ * 201 permiso, 801 capacidad no soportada, 3301000 servicio no disponible,
+ * 3301100 interruptor de ubicación apagado, 3301200 no se pudo obtener la ubicación
+ * (incluye agotar locatingTimeoutMs). Cualquier otro: texto genérico.
+ */
+export const LOCATION_ERR_PERMISSION: number = 201;
+export const LOCATION_ERR_NOT_SUPPORTED: number = 801;
+export const LOCATION_ERR_SERVICE_UNAVAILABLE: number = 3301000;
+export const LOCATION_ERR_SWITCH_OFF: number = 3301100;
+export const LOCATION_ERR_FAILED_TO_OBTAIN: number = 3301200;
+
+export function locationStatusForError(code: number): LocationStatus {
+  if (code === LOCATION_ERR_PERMISSION) {
+    return LocationStatus.NoPermission;
+  }
+  if (code === LOCATION_ERR_SWITCH_OFF) {
+    return LocationStatus.SystemDisabled;
+  }
+  if (code === LOCATION_ERR_FAILED_TO_OBTAIN) {
+    return LocationStatus.Timeout;
+  }
+  if (code === LOCATION_ERR_SERVICE_UNAVAILABLE || code === LOCATION_ERR_NOT_SUPPORTED) {
+    return LocationStatus.ServiceUnavailable;
+  }
+  return LocationStatus.Failed;
 }
 
 /**
@@ -88,10 +117,7 @@ class LocationService {
       location = await geoLocationManager.getCurrentLocation(request);
     } catch (err) {
       Logger.error(TAG, 'getCurrentLocation falló', err as Object);
-      // 3301200: tiempo agotado / sin resultado; 3301100: interruptor del sistema apagado.
-      const code: number = (err as BusinessError).code ?? 0;
-      empty.status = code === 3301100 ? LocationStatus.SystemDisabled :
-        (code === 3301200 ? LocationStatus.Timeout : LocationStatus.Failed);
+      empty.status = locationStatusForError((err as BusinessError).code ?? 0);
       return empty;
     }
     const result: LocationResult = {

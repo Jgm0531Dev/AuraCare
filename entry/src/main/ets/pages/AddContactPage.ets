@@ -201,6 +201,10 @@ export struct AddContactPage {
     .height('100%')
     .scrollBar(BarState.Off)
     .align(Alignment.Top)
+    .focusable(true)
+    .defaultFocus(true)
+    .focusOnTouch(true)
+    .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
   }
 
   /** Presupuesto: visor 36 + 4 filas x 72 + 3 x 4 = 336 base (zona útil). */

@@ -19,7 +19,7 @@ export interface AnomalyConfig {
   fallImpactG: number;
   /** Inmovilidad continua tras el impacto para confirmar caída. */
   fallStillMs: number;
-  /** Ventana máxima entre impacto e inicio de la inmovilidad. */
+  /** Ventana máxima entre impacto e inicio de la inmovilidad (debe superar MOVEMENT_WINDOW_MS). */
   fallWindowMs: number;
   /** Silencio tras una alerta o tras "Estoy bien". */
   cooldownMs: number;
@@ -31,7 +31,8 @@ export const DEFAULT_ANOMALY_CONFIG: AnomalyConfig = {
   sustainMs: 10000,
   fallImpactG: 2.5,
   fallStillMs: 10000,
-  fallWindowMs: 5000,
+  // > ventana de inmovilidad (5 s, MotionClassifier): el golpe sale de la ventana a los ~5 s.
+  fallWindowMs: 8000,
   cooldownMs: 120000
 };
 

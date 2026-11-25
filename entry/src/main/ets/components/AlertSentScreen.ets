@@ -75,6 +75,9 @@ export struct AlertSentScreen {
     if (status === LocationStatus.Timeout) {
       return $r('app.string.location_timeout');
     }
+    if (status === LocationStatus.ServiceUnavailable) {
+      return $r('app.string.location_service_unavailable');
+    }
     if (status === LocationStatus.Failed) {
       return $r('app.string.location_failed');
     }
@@ -233,7 +236,9 @@ export struct AlertSentScreen {
           Text(this.locationText())
             .fontSize(dimens.u(DesignTokens.fsMin))
             .fontColor(this.locationColor())
-            .maxLines(1)
+            .maxLines(2)
+            .textAlign(TextAlign.Center)
+            .width('100%')
           if (appStore.locationStatus === LocationStatus.Found && appStore.address.length > 0) {
             Text(appStore.address)
               .fontSize(dimens.u(DesignTokens.fsMin))
@@ -246,7 +251,9 @@ export struct AlertSentScreen {
             Text($r('app.string.location_not_sent'))
               .fontSize(dimens.u(DesignTokens.fsMin))
               .fontColor($r('app.color.muted'))
-              .maxLines(1)
+              .maxLines(3)
+              .textAlign(TextAlign.Center)
+              .width('100%')
           }
         }
         .width('100%')
@@ -259,7 +266,8 @@ export struct AlertSentScreen {
         if (this.hasContacts()) {
           ForEach(appStore.contacts, (contact: EmergencyContact): void => {
             this.contactRow(contact)
-          }, (contact: EmergencyContact): string => `${contact.id}-${contact.step}`)
+          }, (contact: EmergencyContact): string =>
+            `${contact.id}|${contact.name}|${contact.phone ?? ''}|${contact.step}`)
 
           Text(appStore.onWay ? $r('app.string.reminders_paused') :
             $r('app.string.next_notice_time', this.formatTime(appStore.nextNoticeSeconds)))
@@ -306,6 +314,10 @@ export struct AlertSentScreen {
     .height('100%')
     .scrollBar(BarState.Off)
     .align(Alignment.Top)
+    .focusable(true)
+    .defaultFocus(true)
+    .focusOnTouch(true)
+    .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
     // Recorte justo bajo la cabecera, fondo opaco y sin rebote que asome tarjetas.
     .clip(true)
     .edgeEffect(EdgeEffect.None)

@@ -99,7 +99,7 @@ export struct SettingsPage {
 
   private testVibration(): void {
     Logger.info(TAG, 'onClick vibracion');
-    vibrationService.vibrate(VibrationPattern.Triple);
+    vibrationService.vibrate(VibrationPattern.Triple, 'probar-vibracion');
     this.vibrationSent = true;
     if (this.feedbackTimer !== undefined) {
       clearTimeout(this.feedbackTimer);
@@ -122,6 +122,13 @@ export struct SettingsPage {
   settingsBody() {
     Scroll() {
       Column({ space: dimens.cqw(1.8) }) {
+        // v1.0.1: alcance real de la vigilancia (sin tarea continua en segundo plano).
+        Text($r('app.string.monitoring_scope'))
+          .fontSize(dimens.u(DesignTokens.fsMin))
+          .fontColor($r('app.color.orange'))
+          .maxLines(3)
+          .textAlign(TextAlign.Center)
+          .width('100%')
         ExtraSettingButton({
           title: $r('app.string.sensitivity'),
           subtitle: $r('app.string.threshold', this.sensitivityThreshold()),
@@ -245,6 +252,9 @@ export struct SettingsPage {
     .height('100%')
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
+    .focusable(true)
+    .focusOnTouch(true)
+    .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
     .nestedScroll({
       scrollForward: NestedScrollMode.SELF_FIRST,
       scrollBackward: NestedScrollMode.SELF_FIRST

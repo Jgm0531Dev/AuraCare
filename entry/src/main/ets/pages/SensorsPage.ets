@@ -159,8 +159,8 @@ export struct SensorsPage {
     SensorCard({
       symbol: $r('sys.symbol.location_north_up_right'),
       name: $r('app.string.sensor_location'),
-      value: $r('app.string.sensor_location_share'),
-      status: appStore.settings.locationEnabled ? $r('app.string.sensor_ready') : $r('app.string.location_off'),
+      value: $r('app.string.location_value_optional'),
+      status: appStore.settings.locationEnabled ? $r('app.string.location_status_on') : $r('app.string.location_off'),
       valueColor: $r('app.color.text_primary'),
       statusColor: $r('app.color.green'),
       variant: appStore.capabilities.location,
@@ -221,6 +221,9 @@ export struct SensorsPage {
     .height('100%')
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
+    .focusable(true)
+    .focusOnTouch(true)
+    .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
     .nestedScroll({
       scrollForward: NestedScrollMode.SELF_FIRST,
       scrollBackward: NestedScrollMode.SELF_FIRST

@@ -17,8 +17,10 @@ import { ContactsPage } from './ContactsPage';
 import { SettingsPage } from './SettingsPage';
 import { AlertRoute } from '../components/AlertRoute';
 import { AddContactPage } from './AddContactPage';
-import { DEMO_GESTURE_ENABLED, DEMO_VISIBLE } from '../util/AppConfig';
+import { DEMO_GESTURE_ENABLED } from '../util/AppConfig';
 import { AlertConfirmDialog } from '../components/AlertConfirmDialog';
+
+const MAIN_SWIPER_ID: string = 'mainSwiper';
 
 @Entry
 @ComponentV2
@@ -32,18 +34,18 @@ struct Index {
   // previewer.log: disableSwipe y las capas de alerta no reaccionaban). Los alimenta EmergencyService.
   @Local alertState: AlertState = AlertState.None;
   @Local dialogVisible: boolean = false;
-  @Local callingVisible: boolean = false;
   @Local callFailedVisible: boolean = false;
+  @Local infoVisible: boolean = false;
   private unsubscribeUi: () => void = (): void => {};
 
   private syncFromStore(event: string): void {
     this.alertState = appStore.emergency.state;
     this.dialogVisible = appStore.dialogOpen;
-    this.callingVisible = appStore.callingVisible;
     this.callFailedVisible = appStore.callFailedVisible;
+    this.infoVisible = appStore.infoVisible;
     if (DEBUG_LAYOUT) {
       Logger.info('Index',
-        `[trace] espejo actualizado (${event}): alert=${this.alertState} dialog=${this.dialogVisible} calling=${this.callingVisible} navStackDepth=${this.pathStack.size()}`);
+        `[trace] espejo actualizado (${event}): alert=${this.alertState} dialog=${this.dialogVisible} navStackDepth=${this.pathStack.size()}`);
     }
     this.syncRoutes(event);
     if (event === 'addContact' && this.pathStack.getAllPathName().indexOf('addContact') < 0) {
@@ -64,6 +66,7 @@ struct Index {
       } else if (!wantAlert && this.pathStack.getAllPathName().indexOf('alert') >= 0) {
         this.pathStack.removeByName('alert');
         this.traceRoute(`remove alert (${event})`);
+        this.focusSwiper('remove alert');
       }
       const hasDialog: boolean = this.pathStack.getAllPathName().indexOf('dialog') >= 0;
       if (this.dialogVisible && !hasDialog) {
@@ -72,12 +75,24 @@ struct Index {
       } else if (!this.dialogVisible && hasDialog) {
         this.pathStack.removeByName('dialog');
         this.traceRoute(`remove dialog (${event})`);
+        this.focusSwiper('remove dialog');
       }
     } catch (err) {
       Logger.error('Index', `syncRoutes falló (${event})`, err as Object);
     } finally {
       appStore.navStackDepth = this.pathStack.size();
     }
+  }
+
+  /** Devuelve el foco (y la corona) al ArcSwiper principal; tras Navigation se pide en el siguiente frame. */
+  private focusSwiper(reason: string): void {
+    setTimeout((): void => {
+      try {
+        this.getUIContext().getFocusController().requestFocus(MAIN_SWIPER_ID);
+      } catch (err) {
+        Logger.error('Index', `requestFocus swiper falló (${reason})`, err as Object);
+      }
+    }, 0);
   }
 
   private traceRoute(action: string): void {
@@ -154,6 +169,7 @@ struct Index {
           try {
             this.pathStack.pop();
           } finally {
+            this.focusSwiper('demoPop');
             this.syncNavDepth('demoPop');
           }
         }
@@ -163,6 +179,7 @@ struct Index {
         onDone: (): void => {
           this.pathStack.removeByName('addContact');
           this.syncNavDepth('addContactDone');
+          this.focusSwiper('addContactDone');
         }
       })
     } else if (name === 'alert') {
@@ -272,7 +289,8 @@ struct Index {
       icon: this.dialogIcon(),
       tone: this.dialogTone(),
       hideCancel: appStore.dialogKind === DialogKind.AddContact,
-      showSimulationNote: appStore.dialogKind === DialogKind.Call911 && DEMO_VISIBLE,
+      // v1.0.1: el marcador es real; ya no hay nota de simulación.
+      showSimulationNote: false,
       onConfirm: (): void => {
         emergencyService.confirmDialog();
       },
@@ -358,11 +376,19 @@ struct Index {
           .width('100%')
           .height('100%')
           .vertical(true)
+          // Corona: el ArcSwiper la recibe cuando tiene el foco (foco por defecto al abrir).
+          .id(MAIN_SWIPER_ID)
+          .focusable(true)
+          .defaultFocus(true)
+          .focusOnTouch(true)
+          .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
           .disableSwipe(this.alertState !== AlertState.None || this.dialogVisible)
           .indicator(this.indicator)
           .index(this.activePage)
           .onChange((index: number) => {
             this.activePage = index;
+            // Tras deslizar (o si un Scroll tomó el foco al tocarlo), la corona vuelve a cambiar de pantalla.
+            this.focusSwiper('onChange');
             if (DEBUG_LAYOUT) {
               Logger.info('Index',
                 `arcSwiper onChange: page=${index} overlayOpen=${appStore.dialogOpen} alert=${appStore.emergency.state} navStackDepth=${this.pathStack.size()}`);
@@ -385,33 +411,6 @@ struct Index {
 
       // Alerta y diálogos ya no van aquí: son rutas 'alert' y 'dialog' (ver syncRoutes).
 
-      if (this.callingVisible) {
-        Column() {
-          Row({ space: dimens.cqw(DesignTokens.demoGapCqw) }) {
-            Text($r('app.string.calling_prefix'))
-              .fontSize(dimens.u(DesignTokens.fsLabel))
-              .fontColor($r('app.color.text_primary'))
-            Text(appStore.callingName)
-              .fontSize(dimens.u(DesignTokens.fsLabel))
-              .fontColor($r('app.color.text_primary'))
-            Text($r('app.string.calling_suffix'))
-              .fontSize(dimens.u(DesignTokens.fsLabel))
-              .fontColor($r('app.color.text_primary'))
-          }
-          .padding({
-            left: dimens.cqw(DesignTokens.infoCardPaddingCqw),
-            right: dimens.cqw(DesignTokens.infoCardPaddingCqw),
-            top: dimens.cqw(DesignTokens.chipPaddingCqw),
-            bottom: dimens.cqw(DesignTokens.chipPaddingCqw)
-          })
-          .backgroundColor($r('app.color.card'))
-          .borderRadius(dimens.radiusChip())
-        }
-        .width('100%')
-        .alignItems(HorizontalAlign.Center)
-        .margin({ top: dimens.cqw(DesignTokens.toastTopCqw) })
-        .hitTestBehavior(HitTestMode.Transparent)
-      }
 
       // El reloj no puede llamar: se dice y se muestra el número para marcarlo desde otro teléfono.
       if (this.callFailedVisible) {
@@ -442,6 +441,36 @@ struct Index {
           .accessibilityText($r('app.string.call_unavailable'))
           .onClick((): void => {
             emergencyService.hideCallFailed();
+          })
+        }
+        .width('100%')
+        .padding({ left: dimens.safeLeft(), right: dimens.safeRight() })
+        .alignItems(HorizontalAlign.Center)
+        .margin({ top: dimens.cqw(DesignTokens.toastTopCqw) })
+        .hitTestBehavior(HitTestMode.Transparent)
+      }
+
+      // Aviso informativo (instrucciones): se cierra al tocarlo.
+      if (this.infoVisible) {
+        Column() {
+          Button() {
+            Text(appStore.infoMessage)
+              .fontSize(dimens.u(DesignTokens.fsMin))
+              .fontColor($r('app.color.text_primary'))
+              .maxLines(4)
+              .textAlign(TextAlign.Center)
+              .padding({
+                left: dimens.cqw(DesignTokens.infoCardPaddingCqw),
+                right: dimens.cqw(DesignTokens.infoCardPaddingCqw),
+                top: dimens.cqw(DesignTokens.chipPaddingCqw),
+                bottom: dimens.cqw(DesignTokens.chipPaddingCqw)
+              })
+          }
+          .constraintSize({ minHeight: dimens.touchMin() })
+          .backgroundColor($r('app.color.card'))
+          .borderRadius(dimens.radiusChip())
+          .onClick((): void => {
+            emergencyService.hideInfo();
           })
         }
         .width('100%')

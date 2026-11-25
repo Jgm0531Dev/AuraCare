@@ -36,9 +36,16 @@ const VALID_MAX_BPM: number = 220;
 export class RangeTracker {
   private buckets: RangeBucket[] = [];
 
+  /** Tolera histórico corrupto (no-array, campos ausentes o no numéricos): lo inválido se descarta. */
   constructor(buckets: RangeBucket[] = []) {
+    if (!Array.isArray(buckets)) {
+      this.buckets = [];
+      return;
+    }
     this.buckets = buckets.filter((bucket: RangeBucket): boolean =>
-      bucket.count > 0 && Number.isFinite(bucket.sum) && Number.isFinite(bucket.sumSq));
+      bucket !== null && typeof bucket === 'object' && Number.isFinite(bucket.hour) &&
+      Number.isFinite(bucket.count) && bucket.count > 0 &&
+      Number.isFinite(bucket.sum) && Number.isFinite(bucket.sumSq));
   }
 
   getBuckets(): RangeBucket[] {

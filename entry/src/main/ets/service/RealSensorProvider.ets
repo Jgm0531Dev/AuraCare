@@ -5,26 +5,17 @@ import { SensorCapabilities, SensorStatus } from '../model/SensorAvailability';
 import { PulseState } from '../model/PulseState';
 import { SensorProvider } from './SensorProvider';
 import { Logger } from '../util/Logger';
+import { RELEASE_MODE } from '../util/AppConfig';
+import { GRAVITY_MS2, MotionClassifier, MotionKind } from '../state/MotionClassifier';
 
 const TAG: string = 'RealSensorProvider';
 const HEALTH_PERMISSION: Permissions = 'ohos.permission.READ_HEALTH_DATA';
 const HEART_RATE_INTERVAL_NS: number = 1000000000;
 const MOVEMENT_INTERVAL_NS: number = 200000000;
 const NO_DATA_TIMEOUT_MS: number = 10000;
-const MOVEMENT_WINDOW_MS: number = 5000;
-const GRAVITY_MS2: number = 9.81;
-const IMMOBILE_AVG: number = 0.12;
-const IMMOBILE_MAX: number = 0.25;
-const RESTING_AVG: number = 0.55;
-const MIN_MOTION_SAMPLES: number = 4;
 /** Una lectura de pulso más vieja que esto ya no se muestra ni se evalúa. */
 const HEART_RATE_FRESH_MS: number = 5000;
 const MOTION_FRESH_MS: number = 3000;
-
-class MotionSample {
-  timestamp: number = 0;
-  deviation: number = 0;
-}
 
 export class RealSensorProvider implements SensorProvider {
   // SpO2 y temperatura: sin SensorId público en el SDK 6.1.1(24) -> No disponible (ver docs/auditoria-fase0.md).
@@ -40,9 +31,9 @@ export class RealSensorProvider implements SensorProvider {
   private bpm: number = 0;
   private spo2: number = 0;
   private temperature: number = 0;
-  private movementLabel: Resource = $r('app.string.value_dash');
-  private immobile: boolean = false;
-  private peakG: number = 0;
+  /** Clasificación pura (testeable con muestras sintéticas en src/test). */
+  private readonly motion: MotionClassifier = new MotionClassifier();
+  private lastMagnitudeLogAt: number = 0;
   private availabilityChecked: boolean = false;
   private heartRateAvailable: boolean = false;
   private movementAvailable: boolean = false;
@@ -52,7 +43,6 @@ export class RealSensorProvider implements SensorProvider {
   private lastHeartRateAt: number = 0;
   private lastMovementAt: number = 0;
   private watchdogTimer: number | undefined = undefined;
-  private motionSamples: MotionSample[] = [];
 
   private readonly heartRateCallback: (data: sensor.HeartRateResponse) => void =
     (data: sensor.HeartRateResponse): void => {
@@ -70,46 +60,41 @@ export class RealSensorProvider implements SensorProvider {
   private readonly movementCallback: (data: sensor.AccelerometerResponse) => void =
     (data: sensor.AccelerometerResponse): void => {
       try {
-        const magnitude: number = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
-        const deviation: number = Math.abs(magnitude - GRAVITY_MS2);
-        this.peakG = Math.max(this.peakG, magnitude / GRAVITY_MS2);
         const now: number = Date.now();
-        this.motionSamples = this.motionSamples.filter((sample: MotionSample): boolean =>
-          now - sample.timestamp <= MOVEMENT_WINDOW_MS);
-        const sample: MotionSample = new MotionSample();
-        sample.timestamp = now;
-        sample.deviation = deviation;
-        this.motionSamples.push(sample);
+        const magnitude: number = this.motion.add(data.x, data.y, data.z, now);
         this.lastMovementAt = now;
         this.capabilitiesState.movement = SensorStatus.Measuring;
-        if (this.motionSamples.length < MIN_MOTION_SAMPLES) {
-          return;
-        }
-        let sum: number = 0;
-        let max: number = 0;
-        this.motionSamples.forEach((item: MotionSample): void => {
-          sum += item.deviation;
-          max = Math.max(max, item.deviation);
-        });
-        const average: number = sum / this.motionSamples.length;
-        this.immobile = average < IMMOBILE_AVG && max < IMMOBILE_MAX;
-        if (this.immobile) {
-          this.movementLabel = $r('app.string.immobile');
-        } else if (average < RESTING_AVG) {
-          this.movementLabel = $r('app.string.resting');
-        } else {
-          this.movementLabel = $r('app.string.walking');
+        // Solo debug (RELEASE_MODE=false): magnitud 1 vez por segundo para comprobar en reloj real.
+        if (!RELEASE_MODE && now - this.lastMagnitudeLogAt >= 1000) {
+          this.lastMagnitudeLogAt = now;
+          Logger.info(TAG, `acelerómetro |a|=${magnitude.toFixed(2)} m/s2 (${(magnitude / GRAVITY_MS2).toFixed(2)} g) pico=${this.motion.peekPeakG().toFixed(2)} g estado=${this.motion.getKind()}`);
         }
       } catch (err) {
         Logger.error(TAG, 'callback de movimiento falló', err as Object);
       }
     };
 
-  async requestPermission(context: Context): Promise<boolean> {
+  /**
+   * 1) requestPermissionsFromUser. 2) Si el sistema ya no muestra el diálogo (dialogShownResults=false,
+   * tras una negativa) y `allowSettings`, requestPermissionOnSetting abre el ajuste del permiso.
+   * Si todo falla devuelve false y la UI muestra las instrucciones manuales.
+   */
+  async requestPermission(context: Context, allowSettings: boolean = false): Promise<boolean> {
     try {
       const manager: abilityAccessCtrl.AtManager = abilityAccessCtrl.createAtManager();
       const result = await manager.requestPermissionsFromUser(context, [HEALTH_PERMISSION]);
-      const granted: boolean = result.authResults[0] === 0;
+      let granted: boolean = result.authResults[0] === 0;
+      const shownList: boolean[] = result.dialogShownResults ?? [];
+      const dialogShown: boolean = shownList.length > 0 ? shownList[0] : true;
+      if (!granted && allowSettings && !dialogShown) {
+        try {
+          const statuses: abilityAccessCtrl.GrantStatus[] =
+            await manager.requestPermissionOnSetting(context, [HEALTH_PERMISSION]);
+          granted = statuses.length > 0 && statuses[0] === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED;
+        } catch (settingErr) {
+          Logger.error(TAG, 'requestPermissionOnSetting falló', settingErr as Object);
+        }
+      }
       this.permissionDenied = !granted;
       if (granted) {
         Logger.info(TAG, 'Permiso READ_HEALTH_DATA concedido');
@@ -137,21 +122,33 @@ export class RealSensorProvider implements SensorProvider {
     const now: number = Date.now();
     const heartRateValid: boolean = this.heartRateSubscribed && this.lastHeartRateAt > 0 &&
       now - this.lastHeartRateAt <= HEART_RATE_FRESH_MS;
-    const motionValid: boolean = this.movementSubscribed && this.lastMovementAt > 0 &&
-      now - this.lastMovementAt <= MOTION_FRESH_MS && this.motionSamples.length >= MIN_MOTION_SAMPLES;
-    const peak: number = this.peakG;
-    this.peakG = 0;
+    const motionValid: boolean = this.movementSubscribed && this.motion.isValid(now, MOTION_FRESH_MS);
+    const peak: number = this.motion.takePeakG();
     return {
       bpm: heartRateValid ? this.bpm : 0,
       spo2: 0,
       temperature: 0,
-      movementLabel: motionValid ? this.movementLabel : $r('app.string.value_dash'),
+      movementLabel: motionValid ? this.motionLabel() : $r('app.string.value_dash'),
       timestamp: now,
       heartRateValid: heartRateValid,
       motionValid: motionValid,
-      immobile: motionValid && this.immobile,
+      immobile: motionValid && this.motion.isImmobile(),
       peakG: motionValid ? peak : 0
     };
+  }
+
+  private motionLabel(): Resource {
+    const kind: MotionKind = this.motion.getKind();
+    if (kind === MotionKind.Immobile) {
+      return $r('app.string.immobile');
+    }
+    if (kind === MotionKind.Resting) {
+      return $r('app.string.resting');
+    }
+    if (kind === MotionKind.Walking) {
+      return $r('app.string.walking');
+    }
+    return $r('app.string.value_dash');
   }
 
   capabilities(): SensorCapabilities {
@@ -194,7 +191,7 @@ export class RealSensorProvider implements SensorProvider {
     this.availabilityChecked = false;
     this.lastHeartRateAt = 0;
     this.lastMovementAt = 0;
-    this.motionSamples = [];
+    this.motion.reset();
     this.clearWatchdog();
     Logger.info(TAG, 'sensores liberados');
   }

@@ -39,14 +39,15 @@ export class AppEmergency {
 
 @ObservedV2
 export class AppStore {
-  @Trace bpm: number = 78;
+  /** Valores neutros hasta la primera lectura (nunca valores de ejemplo fuera del Modo demostración). */
+  @Trace bpm: number = 0;
   @Trace pulseState: PulseState = PulseState.Normal;
-  @Trace spo2: number = 98;
+  @Trace spo2: number = 0;
   @Trace spo2Simulated: boolean = true;
-  @Trace temperature: number = 36.5;
-  @Trace movementLabel: Resource = $r('app.string.walking');
+  @Trace temperature: number = 0;
+  @Trace movementLabel: Resource = $r('app.string.value_dash');
   @Trace markerAngle: number = 245;
-  @Trace stateColor: Resource = $r('app.color.green');
+  @Trace stateColor: Resource = $r('app.color.muted');
   /** Estado inicial vacío; los de ejemplo solo con el interruptor del panel demo. */
   @Trace contacts: EmergencyContact[] = [];
   @Trace capabilities: SensorCapabilities = DEFAULT_CAPABILITIES;
@@ -75,6 +76,9 @@ export class AppStore {
   /** El reloj no puede llamar (sin capacidad de voz o makeCall falló): se muestra el número. */
   @Trace callFailedVisible: boolean = false;
   @Trace callFailedNumber: string = '';
+  /** Aviso informativo que se cierra al tocarlo (p. ej., instrucciones del permiso de pulso). */
+  @Trace infoVisible: boolean = false;
+  @Trace infoMessage: Resource = $r('app.string.health_permission_steps');
   @Trace emergencySeconds: number = 0;
   /** Total de la cuenta en curso, desde la máquina (respeta x5/x10 vía Clock). */
   @Trace emergencyTotalSeconds: number = 0;
@@ -84,8 +88,6 @@ export class AppStore {
   @Trace onWay: boolean = false;
   @Trace toastMessage: Resource = $r('app.string.alert_cancelled');
   @Trace toastVisible: boolean = false;
-  @Trace callingName: Resource | string = $r('app.string.emergency_911');
-  @Trace callingVisible: boolean = false;
   @Trace dialogOpen: boolean = false;
   @Trace dialogKind: DialogKind = DialogKind.None;
   /** Espejo de NavPathStack.size() para los logs bajo DEBUG_LAYOUT. */
@@ -204,14 +206,6 @@ export class AppStore {
     this.toastVisible = false;
   }
 
-  showCalling(name: Resource | string): void {
-    this.callingName = name;
-    this.callingVisible = true;
-  }
-
-  hideCalling(): void {
-    this.callingVisible = false;
-  }
 }
 
 export const appStore: AppStore = new AppStore();

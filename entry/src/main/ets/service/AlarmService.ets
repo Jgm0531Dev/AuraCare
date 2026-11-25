@@ -4,6 +4,7 @@ import { vibrator } from '@kit.SensorServiceKit';
 import { Context } from '@kit.AbilityKit';
 import { resourceManager } from '@kit.LocalizationKit';
 import { Logger } from '../util/Logger';
+import { logVibrators, startLoggedVibration } from './VibrationService';
 
 const TAG: string = 'AlarmService';
 const ALARM_FILE: string = 'alarm.wav';
@@ -39,6 +40,7 @@ class AlarmService {
       return;
     }
     this.ringing = true;
+    logVibrators('alarma');
     this.vibrateOnce();
     this.vibrateTimer = setInterval((): void => {
       this.vibrateOnce();
@@ -61,15 +63,7 @@ class AlarmService {
   }
 
   private vibrateOnce(): void {
-    try {
-      const effect: vibrator.VibrateTime = { type: 'time', duration: VIBRATE_ON_MS };
-      const attribute: vibrator.VibrateAttribute = { usage: 'alarm' };
-      vibrator.startVibration(effect, attribute).catch((err: Object): void => {
-        Logger.error(TAG, 'startVibration falló', err);
-      });
-    } catch (err) {
-      Logger.error(TAG, 'vibración de alarma falló', err as Object);
-    }
+    startLoggedVibration('alarma', VIBRATE_ON_MS, 'alarm');
   }
 
   private async startSound(): Promise<void> {

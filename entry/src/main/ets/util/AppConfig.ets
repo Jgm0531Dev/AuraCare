@@ -17,8 +17,5 @@ export const REVIEWER_DEMO_GESTURE: boolean = false;
 /** El panel demo solo es alcanzable con esto en true. */
 export const DEMO_GESTURE_ENABLED: boolean = !RELEASE_MODE || REVIEWER_DEMO_GESTURE;
 
-/**
- * v1.0.1: ya no hay envío simulado. La alerta es real en el reloj (alarma, notificación, marcador y
- * ubicación opcional) y la UI dice que no se envía ningún mensaje automático. Sin uso en la UI.
- */
-export const ALERTS_SIMULATED: boolean = false;
+// v1.0.1: ALERTS_SIMULATED eliminado. La alerta es real en el reloj (alarma, notificación, marcador,
+// ubicación opcional) y la UI dice que no se envía ningún mensaje automático.

@@ -1,3 +1,4 @@
+import { Context } from '@kit.AbilityKit';
 import { DesignTokens } from '../util/DesignTokens';
 import { DEBUG_LAYOUT, dimens } from '../util/Dimens';
 import { Logger } from '../util/Logger';
@@ -51,6 +52,36 @@ export struct MonitorPage {
       return $r('app.color.orange');
     }
     return appStore.heartRateValid ? $r('app.color.accion_principal') : $r('app.color.muted');
+  }
+
+  /** Falta READ_HEALTH_DATA (y no es demo): el Monitor ofrece "Dar permiso". */
+  private needsPermission(): boolean {
+    return !sensorService.isSimulated() && appStore.capabilities.heartRate === SensorStatus.PermissionRequired;
+  }
+
+  /** Alto de la fila bajo el arco: chips (44) o botón táctil (72). */
+  private chipRowBase(): number {
+    return this.needsPermission() ? DesignTokens.touchMin : DesignTokens.monitorChipRowBase;
+  }
+
+  private askPermission(): void {
+    try {
+      const context: Context | undefined = this.getUIContext().getHostContext();
+      if (context === undefined) {
+        emergencyService.showInfo($r('app.string.health_permission_steps'));
+        return;
+      }
+      sensorService.requestPermissionsInteractive(context).then((granted: boolean): void => {
+        if (!granted) {
+          emergencyService.showInfo($r('app.string.health_permission_steps'));
+        }
+      }).catch((err: Object): void => {
+        Logger.error(TAG, 'Dar permiso falló', err);
+        emergencyService.showInfo($r('app.string.health_permission_steps'));
+      });
+    } catch (err) {
+      Logger.error(TAG, 'Dar permiso falló', err as Object);
+    }
   }
 
   private hasPulse(): boolean {
@@ -122,7 +153,7 @@ export struct MonitorPage {
 
   private arcSizeBase(): number {
     const fixed: number = DesignTokens.monitorLiveRowBase + DesignTokens.monitorStatusRowBase +
-      DesignTokens.monitorChipRowBase + DesignTokens.monitorActionsBase +
+      this.chipRowBase() + DesignTokens.monitorActionsBase +
       DesignTokens.monitorGapSmallBase * 2 + DesignTokens.monitorGapLargeBase * 2;
     return Math.max(DesignTokens.monitorArcMinBase,
       Math.min(DesignTokens.monitorArcBase, this.availableBase() - fixed));
@@ -131,7 +162,7 @@ export struct MonitorPage {
   private gapScale(): number {
     const fixedWithoutGaps: number = this.arcSizeBase() +
       DesignTokens.monitorLiveRowBase + DesignTokens.monitorStatusRowBase +
-      DesignTokens.monitorChipRowBase + DesignTokens.monitorActionsBase;
+      this.chipRowBase() + DesignTokens.monitorActionsBase;
     const gaps: number = DesignTokens.monitorGapSmallBase * 2 + DesignTokens.monitorGapLargeBase * 2;
     return Math.max(0, Math.min(1, (this.availableBase() - fixedWithoutGaps) / gaps));
   }
@@ -251,12 +282,6 @@ export struct MonitorPage {
             .fontColor($r('app.color.text_primary'))
             .fontWeight(FontWeight.Medium)
             .maxLines(1)
-          if (appStore.settings.exerciseMode) {
-            Text($r('app.string.monitor_exercise'))
-              .fontSize(dimens.u(DesignTokens.fsMin))
-              .fontColor($r('app.color.green'))
-              .maxLines(1)
-          }
         }
         .width(dimens.u(DesignTokens.monitorLiveRowWidthBase))
         .height(dimens.u(DesignTokens.monitorLiveRowBase))
@@ -290,24 +315,51 @@ export struct MonitorPage {
         .margin({ top: this.gap(DesignTokens.monitorGapSmallBase) })
         .alignItems(VerticalAlign.Center)
 
-        Row({ space: dimens.u(DesignTokens.monitorChipsGapBase) }) {
-          SensorChip({
-            text: this.spo2Chip(),
-            tone: this.spo2Tone(),
-            glyph: $r('app.string.icon_lock'),
-            showGlyph: !this.spo2Available(),
-            accessibility: this.spo2Accessibility()
+        if (this.needsPermission()) {
+          Button() {
+            Text($r('app.string.give_permission'))
+              .fontSize(dimens.u(DesignTokens.fsLabel))
+              .fontColor($r('app.color.text_primary'))
+              .fontWeight(FontWeight.Bold)
+              .maxLines(1)
+          }
+          .width(dimens.percent(DesignTokens.monitorChipsWidthPercent))
+          .height(dimens.touchMin())
+          .borderRadius(dimens.touchMin() / 2)
+          .backgroundColor($r('app.color.accion_principal'))
+          .margin({ top: this.gap(DesignTokens.monitorGapLargeBase) })
+          .accessibilityText($r('app.string.give_permission_a11y'))
+          .onClick((): void => {
+            this.askPermission();
           })
-          SensorChip({
-            text: this.movementText(),
-            tone: this.stateTone(),
-            accessibility: $r('app.string.a11y_spo2_detail')
-          })
+        } else {
+          // Chips: "Ejercicio" (si está activo) o SpO2 (solo con datos de prueba), y movimiento.
+          Row({ space: dimens.u(DesignTokens.monitorChipsGapBase) }) {
+            if (appStore.settings.exerciseMode) {
+              SensorChip({
+                text: $r('app.string.monitor_exercise'),
+                tone: $r('app.color.green'),
+                accessibility: $r('app.string.exercise_desc_v101')
+              })
+            } else if (this.spo2Available()) {
+              SensorChip({
+                text: this.spo2Chip(),
+                tone: this.spo2Tone(),
+                accessibility: this.spo2Accessibility()
+              })
+            }
+            SensorChip({
+              text: this.movementText(),
+              tone: this.stateTone(),
+              accessibility: $r('app.string.a11y_movement_chip')
+            })
+          }
+          .width(dimens.percent(DesignTokens.monitorChipsWidthPercent))
+          .height(dimens.u(DesignTokens.monitorChipRowBase))
+          .margin({ top: this.gap(DesignTokens.monitorGapLargeBase) })
+          .justifyContent(appStore.settings.exerciseMode || this.spo2Available() ?
+            FlexAlign.SpaceBetween : FlexAlign.Center)
         }
-        .width(dimens.percent(DesignTokens.monitorChipsWidthPercent))
-        .height(dimens.u(DesignTokens.monitorChipRowBase))
-        .margin({ top: this.gap(DesignTokens.monitorGapLargeBase) })
-        .justifyContent(FlexAlign.SpaceBetween)
 
         Row({ space: dimens.u(DesignTokens.monitorActionsGapBase) }) {
           SosButton({

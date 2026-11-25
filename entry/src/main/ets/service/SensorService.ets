@@ -71,6 +71,11 @@ class SensorService {
     return this.real.requestPermission(context);
   }
 
+  /** Botón "Dar permiso" del Monitor: diálogo, y si ya no se muestra, el ajuste del sistema. */
+  requestPermissionsInteractive(context: Context): Promise<boolean> {
+    return this.real.requestPermission(context, true);
+  }
+
   /** Tras "Estoy bien" o al cerrar una alerta: evita re-disparos inmediatos. */
   snooze(): void {
     this.engine.snooze(Date.now());
@@ -239,7 +244,7 @@ class SensorService {
     });
     store.anomalyPending = result.pending && store.emergency.state === AlertState.None;
     if (result.trigger !== undefined && store.emergency.state === AlertState.None && store.autoAlerts) {
-      Logger.warn(TAG, `anomalía detectada: ${result.trigger} bpm=${store.bpm}`);
+      Logger.warn(TAG, `anomalía detectada: ${result.trigger}`);
       this.anomalyListener(result.trigger);
     }
   }

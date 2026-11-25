@@ -179,12 +179,15 @@ export struct ContactsPage {
             ListItem() {
               this.contactRow(contact)
             }
-          }, (contact: EmergencyContact): string => contact.id)
+          }, (contact: EmergencyContact): string => `${contact.id}|${contact.name}|${contact.phone ?? ''}`)
         }
         .width('100%')
         .height('100%')
         .scrollBar(BarState.Off)
         .edgeEffect(EdgeEffect.None)
+        .focusable(true)
+        .focusOnTouch(true)
+        .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
         .nestedScroll({
           scrollForward: NestedScrollMode.SELF_FIRST,
           scrollBackward: NestedScrollMode.SELF_FIRST
