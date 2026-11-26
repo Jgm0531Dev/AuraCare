@@ -44,6 +44,9 @@ export struct MonitorPage {
     if (appStore.capabilities.heartRate === SensorStatus.Unavailable) {
       return $r('app.string.monitor_no_sensor');
     }
+    if (appStore.notWorn) {
+      return $r('app.string.monitor_not_worn');
+    }
     return appStore.heartRateValid ? $r('app.string.monitor_live') : $r('app.string.monitor_waiting');
   }
 
@@ -93,7 +96,7 @@ export struct MonitorPage {
       return $r('app.string.calibrating_ellipsis');
     }
     if (!appStore.heartRateValid) {
-      return $r('app.string.pulse_no_reading');
+      return appStore.notWorn ? $r('app.string.pulse_not_worn') : $r('app.string.pulse_no_reading');
     }
     if (appStore.pulseState === PulseState.Critical) {
       return $r('app.string.pulse_critical');

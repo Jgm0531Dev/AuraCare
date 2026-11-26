@@ -55,6 +55,14 @@ export interface AnomalyResult {
 }
 
 /** Normal dentro del rango personal; Elevado fuera de él; Crítico en el umbral alto o bajo. */
+/** Rango fisiológico aceptado para una lectura de pulso (lpm). Fuera de él se descarta como "sin lectura". */
+export const MIN_VALID_BPM: number = 1;
+export const MAX_VALID_BPM: number = 250;
+
+export function isPlausibleBpm(bpm: number): boolean {
+  return Number.isFinite(bpm) && bpm >= MIN_VALID_BPM && bpm <= MAX_VALID_BPM;
+}
+
 export function classifyPulse(bpm: number, rangeMin: number, rangeMax: number, config: AnomalyConfig): PulseState {
   if (bpm <= 0) {
     return PulseState.Normal;

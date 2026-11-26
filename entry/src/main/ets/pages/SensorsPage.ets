@@ -1,3 +1,4 @@
+import { crownNav } from '../util/CrownNav';
 import { ExtraPageHeader } from '../components/ExtraPageHeader';
 import { ScreenScaffold } from '../components/ScreenScaffold';
 import { SensorCard } from '../components/SensorCard';
@@ -21,6 +22,30 @@ const TEMP_FEVER: number = 38.0;
  */
 @ComponentV2
 export struct SensorsPage {
+  /** Página 1 del ArcSwiper: al salir de ella, su contenido vuelve arriba (sin animación). */
+  private readonly scroller: Scroller = new Scroller();
+  private unsubscribePage: () => void = (): void => {};
+  private unregisterScroller: () => void = (): void => {};
+
+  aboutToDisappear(): void {
+    this.unsubscribePage();
+    this.unregisterScroller();
+  }
+
+  aboutToAppear(): void {
+    // La corona (recibida por Index) desplaza esta lista cuando la página 1 está visible.
+    this.unregisterScroller = crownNav.registerScroller(1, this.scroller);
+    this.unsubscribePage = crownNav.onPageChanged((index: number): void => {
+      if (index !== 1) {
+        try {
+          this.scroller.scrollTo({ xOffset: 0, yOffset: 0, animation: false });
+        } catch (err) {
+          // Sin lista montada (p. ej., Contactos vacío): no hay nada que desplazar.
+        }
+      }
+    });
+  }
+
   @Builder
   sensorsHeader() {
     ExtraPageHeader({
@@ -159,8 +184,9 @@ export struct SensorsPage {
     SensorCard({
       symbol: $r('sys.symbol.location_north_up_right'),
       name: $r('app.string.sensor_location'),
-      value: $r('app.string.location_value_optional'),
-      status: appStore.settings.locationEnabled ? $r('app.string.location_status_on') : $r('app.string.location_off'),
+      // Título "Ubicación" (fila 1); estado corto en la fila 2, sin cortes.
+      value: appStore.settings.locationEnabled ? $r('app.string.location_card_on') : $r('app.string.location_card_off'),
+      status: $r('app.string.location_value_optional'),
       valueColor: $r('app.color.text_primary'),
       statusColor: $r('app.color.green'),
       variant: appStore.capabilities.location,
@@ -170,7 +196,7 @@ export struct SensorsPage {
 
   @Builder
   sensorsBody() {
-    Scroll() {
+    Scroll(this.scroller) {
       Column({ space: dimens.u(DesignTokens.sensorCardGapBase) }) {
         // Disponibles (activas o con permiso pendiente) primero.
         if (this.isAvailable(appStore.capabilities.heartRate)) {
@@ -221,9 +247,6 @@ export struct SensorsPage {
     .height('100%')
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
-    .focusable(true)
-    .focusOnTouch(true)
-    .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
     .nestedScroll({
       scrollForward: NestedScrollMode.SELF_FIRST,
       scrollBackward: NestedScrollMode.SELF_FIRST

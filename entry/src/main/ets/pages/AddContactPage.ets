@@ -204,7 +204,7 @@ export struct AddContactPage {
     .focusable(true)
     .defaultFocus(true)
     .focusOnTouch(true)
-    .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
+    .digitalCrownSensitivity(CrownSensitivity.LOW)
   }
 
   /** Presupuesto: visor 36 + 4 filas x 72 + 3 x 4 = 336 base (zona útil). */

@@ -187,13 +187,13 @@ export struct AlertSentScreen {
         .textAlign(TextAlign.Center)
         .width('100%')
 
-      // Aviso fijo (no hace scroll): la app no envía mensajes automáticos.
+      // Instrucción fija (no hace scroll), máx. 2 líneas: la acción es del usuario.
       Text($r('app.string.alert_banner_honest'))
         .fontSize(dimens.u(DesignTokens.fsMin))
         .lineHeight(dimens.u(DesignTokens.alertBannerLineBase))
         .fontColor($r('app.color.orange'))
         .maxLines(DesignTokens.alertBannerMaxLines)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .textOverflow({ overflow: TextOverflow.None })
         .textAlign(TextAlign.Center)
         .width('100%')
     }
@@ -317,7 +317,7 @@ export struct AlertSentScreen {
     .focusable(true)
     .defaultFocus(true)
     .focusOnTouch(true)
-    .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
+    .digitalCrownSensitivity(CrownSensitivity.LOW)
     // Recorte justo bajo la cabecera, fondo opaco y sin rebote que asome tarjetas.
     .clip(true)
     .edgeEffect(EdgeEffect.None)

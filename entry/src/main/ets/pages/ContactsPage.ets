@@ -8,6 +8,7 @@ import { isUserContact } from '../service/ContactRepository';
 import { DesignTokens } from '../util/DesignTokens';
 import { DEBUG_LAYOUT, dimens } from '../util/Dimens';
 import { Logger } from '../util/Logger';
+import { crownNav } from '../util/CrownNav';
 
 const TAG: string = 'ContactsPage';
 const LONG_PRESS_MS: number = 600;
@@ -17,6 +18,25 @@ const DIRECTION_DOWN: number = -1;
 
 @ComponentV2
 export struct ContactsPage {
+  /** Página 4 del ArcSwiper: al salir de ella, su contenido vuelve arriba (sin animación). */
+  private readonly scroller: Scroller = new Scroller();
+  private unsubscribePage: () => void = (): void => {};
+  private unregisterScroller: () => void = (): void => {};
+
+  aboutToAppear(): void {
+    // La corona (recibida por Index) desplaza esta lista cuando la página 4 está visible.
+    this.unregisterScroller = crownNav.registerScroller(4, this.scroller);
+    this.unsubscribePage = crownNav.onPageChanged((index: number): void => {
+      if (index !== 4) {
+        try {
+          this.scroller.scrollTo({ xOffset: 0, yOffset: 0, animation: false });
+        } catch (err) {
+          // Sin lista montada (p. ej., Contactos vacío): no hay nada que desplazar.
+        }
+      }
+    });
+  }
+
   @Event onPageStep: (delta: number) => void = () => {};
   @Local listAtStart: boolean = true;
   @Local listAtEnd: boolean = true;
@@ -25,6 +45,8 @@ export struct ContactsPage {
   private touchStartY: number = 0;
 
   aboutToDisappear(): void {
+    this.unsubscribePage();
+    this.unregisterScroller();
     this.cancelPress();
   }
 
@@ -174,7 +196,7 @@ export struct ContactsPage {
         .height('100%')
         .justifyContent(FlexAlign.Center)
       } else {
-        List({ space: dimens.u(DesignTokens.contactsListGapBase) }) {
+        List({ scroller: this.scroller, space: dimens.u(DesignTokens.contactsListGapBase) }) {
           ForEach(appStore.contacts, (contact: EmergencyContact): void => {
             ListItem() {
               this.contactRow(contact)
@@ -185,9 +207,6 @@ export struct ContactsPage {
         .height('100%')
         .scrollBar(BarState.Off)
         .edgeEffect(EdgeEffect.None)
-        .focusable(true)
-        .focusOnTouch(true)
-        .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
         .nestedScroll({
           scrollForward: NestedScrollMode.SELF_FIRST,
           scrollBackward: NestedScrollMode.SELF_FIRST

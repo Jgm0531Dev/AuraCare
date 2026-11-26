@@ -58,6 +58,8 @@ export class AppStore {
   @Trace movementImmobile: boolean = false;
   /** false = sin lectura de pulso (sin permiso, sin sensor o reloj sin colocar): el Monitor muestra "--". */
   @Trace heartRateValid: boolean = false;
+  /** WEAR_DETECTION: reloj quitado de la muñeca (pulso y caídas se ignoran). */
+  @Trace notWorn: boolean = false;
   @Trace motionValid: boolean = false;
   /** Rango normal personal calculado con lecturas reales acumuladas (RangeModel). */
   @Trace rangeReady: boolean = false;

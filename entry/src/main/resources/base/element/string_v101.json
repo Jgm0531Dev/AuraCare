@@ -94,7 +94,7 @@
     },
     {
       "name": "alert_banner_honest",
-      "value": "No se envían mensajes automáticos. Abre el marcador desde aquí y confirma tú la llamada."
+      "value": "Llama tú ahora a tu contacto o al 911."
     },
     {
       "name": "silence_alarm",
@@ -207,6 +207,26 @@
     {
       "name": "monitoring_scope",
       "value": "AuraCare vigila solo mientras la app está abierta y la pantalla encendida."
+    },
+    {
+      "name": "demo_hide",
+      "value": "Apagar y ocultar demostración"
+    },
+    {
+      "name": "location_card_on",
+      "value": "Activa"
+    },
+    {
+      "name": "location_card_off",
+      "value": "Apagada"
+    },
+    {
+      "name": "monitor_not_worn",
+      "value": "RELOJ NO COLOCADO"
+    },
+    {
+      "name": "pulse_not_worn",
+      "value": "No colocado"
     }
   ]
 }

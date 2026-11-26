@@ -13,7 +13,6 @@ interface StoredSettings {
   noticeMinutes?: number;
   exerciseMode?: boolean;
   fallDetection?: boolean;
-  demoMode?: boolean;
   locationEnabled?: boolean;
 }
 
@@ -52,9 +51,7 @@ class SettingsRepository {
       if (stored.fallDetection !== undefined) {
         target.fallDetection = stored.fallDetection;
       }
-      if (stored.demoMode !== undefined) {
-        target.demoMode = stored.demoMode;
-      }
+      // demoMode NO se carga: el Modo demostración nunca arranca activo.
       if (stored.locationEnabled !== undefined) {
         target.locationEnabled = stored.locationEnabled;
       }
@@ -73,7 +70,6 @@ class SettingsRepository {
       noticeMinutes: source.noticeMinutes,
       exerciseMode: source.exerciseMode,
       fallDetection: source.fallDetection,
-      demoMode: source.demoMode,
       locationEnabled: source.locationEnabled
     };
     try {

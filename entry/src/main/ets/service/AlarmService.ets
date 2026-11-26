@@ -55,7 +55,9 @@ class AlarmService {
       this.vibrateTimer = undefined;
     }
     try {
-      vibrator.stopVibration();
+      vibrator.stopVibration().catch((err: Object): void => {
+        Logger.error(TAG, 'stopVibration rechazada', err);
+      });
     } catch (err) {
       Logger.error(TAG, 'stopVibration falló', err as Object);
     }

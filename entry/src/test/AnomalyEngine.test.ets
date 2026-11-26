@@ -4,7 +4,9 @@ import {
   AnomalyInput,
   AnomalyResult,
   DEFAULT_ANOMALY_CONFIG,
-  classifyPulse
+  classifyPulse,
+  isPlausibleBpm,
+  MAX_VALID_BPM
 } from '../main/ets/state/AnomalyEngine';
 import { GRAVITY_MS2, MotionClassifier, MotionKind } from '../main/ets/state/MotionClassifier';
 import { AlertReason } from '../main/ets/model/AlertReason';
@@ -307,6 +309,23 @@ export default function anomalyEngineTest() {
       expect(classifyPulse(config.highBpm, 55, 90, config)).assertEqual(PulseState.Critical);
       expect(classifyPulse(35, 55, 90, config)).assertEqual(PulseState.Critical);
       expect(classifyPulse(0, 55, 90, config)).assertEqual(PulseState.Normal);
+    });
+  });
+
+  describe('isPlausibleBpm', () => {
+    it('descarta 0, negativos, NaN e imposibles (> 250)', 0, () => {
+      expect(isPlausibleBpm(0)).assertFalse();
+      expect(isPlausibleBpm(-5)).assertFalse();
+      expect(isPlausibleBpm(NaN)).assertFalse();
+      expect(isPlausibleBpm(Infinity)).assertFalse();
+      expect(isPlausibleBpm(MAX_VALID_BPM + 1)).assertFalse();
+      expect(isPlausibleBpm(300)).assertFalse();
+    });
+    it('acepta valores reales, incluidos los límites', 0, () => {
+      expect(isPlausibleBpm(1)).assertTrue();
+      expect(isPlausibleBpm(38)).assertTrue();
+      expect(isPlausibleBpm(72)).assertTrue();
+      expect(isPlausibleBpm(MAX_VALID_BPM)).assertTrue();
     });
   });
 }

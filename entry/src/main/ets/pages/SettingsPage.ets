@@ -13,19 +13,44 @@ import { SENSITIVITY_THRESHOLDS, VibrationPattern } from '../state/EmergencyMach
 import { DesignTokens } from '../util/DesignTokens';
 import { dimens } from '../util/Dimens';
 import { Logger } from '../util/Logger';
+import { crownNav } from '../util/CrownNav';
 
 // REGISTRAR: Index.ets -> ArcSwiper() ya contiene SettingsPage() como sexta página; no añadir nada.
 
 const TAG: string = 'SettingsPage';
 const VIBRATION_FEEDBACK_MS: number = 1600;
+const DEMO_UNLOCK_MS: number = 3000;
 
 @ComponentV2
 export struct SettingsPage {
+  /** Página 5 del ArcSwiper: al salir de ella, su contenido vuelve arriba (sin animación). */
+  private readonly scroller: Scroller = new Scroller();
+  private unsubscribePage: () => void = (): void => {};
+  private unregisterScroller: () => void = (): void => {};
+
+  aboutToAppear(): void {
+    // La corona (recibida por Index) desplaza esta lista cuando la página 5 está visible.
+    this.unregisterScroller = crownNav.registerScroller(5, this.scroller);
+    this.unsubscribePage = crownNav.onPageChanged((index: number): void => {
+      if (index !== 5) {
+        try {
+          this.scroller.scrollTo({ xOffset: 0, yOffset: 0, animation: false });
+        } catch (err) {
+          // Sin lista montada (p. ej., Contactos vacío): no hay nada que desplazar.
+        }
+      }
+    });
+  }
+
   @Local vibrationSent: boolean = false;
   @Local locationDenied: boolean = false;
+  /** Sección de Modo demostración visible (gesto de 3 s en el título). No se guarda. */
+  @Local demoUnlocked: boolean = false;
   private feedbackTimer: number | undefined = undefined;
 
   aboutToDisappear(): void {
+    this.unsubscribePage();
+    this.unregisterScroller();
     if (this.feedbackTimer !== undefined) {
       clearTimeout(this.feedbackTimer);
       this.feedbackTimer = undefined;
@@ -116,11 +141,16 @@ export struct SettingsPage {
       title: $r('app.string.page_settings'),
       symbol: $r('sys.symbol.gearshape')
     })
+      // Acceso oculto para revisores: mantener pulsado el título 3 s muestra "Modo demostración".
+      .gesture(LongPressGesture({ duration: DEMO_UNLOCK_MS }).onAction((_event: GestureEvent): void => {
+        Logger.info(TAG, 'sección de Modo demostración desbloqueada');
+        this.demoUnlocked = true;
+      }))
   }
 
   @Builder
   settingsBody() {
-    Scroll() {
+    Scroll(this.scroller) {
       Column({ space: dimens.cqw(1.8) }) {
         // v1.0.1: alcance real de la vigilancia (sin tarea continua en segundo plano).
         Text($r('app.string.monitoring_scope'))
@@ -192,48 +222,6 @@ export struct SettingsPage {
           }
         })
 
-        ExtraSettingToggle({
-          title: $r('app.string.demo_mode'),
-          subtitle: appStore.settings.demoMode ? $r('app.string.demo_mode_on_desc') : $r('app.string.demo_mode_desc'),
-          isOn: appStore.settings.demoMode,
-          hint: $r('app.string.demo_mode_desc'),
-          name: 'demoMode',
-          onValueChange: (value: boolean): void => {
-            sensorService.setDemoMode(value);
-            emergencyService.saveSettings();
-          }
-        })
-
-        if (appStore.settings.demoMode) {
-          Text($r('app.string.demo_mode_pick'))
-            .fontSize(dimens.u(DesignTokens.fsMin))
-            .fontColor($r('app.color.orange'))
-            .maxLines(2)
-            .textAlign(TextAlign.Center)
-            .width('100%')
-          DemoChoiceButton({
-            label: $r('app.string.demo_state_normal'),
-            color: appStore.pulseState === PulseState.Normal ? $r('app.color.green') : $r('app.color.card'),
-            onPress: (): void => {
-              sensorService.selectVariant(PulseState.Normal, appStore);
-            }
-          })
-          DemoChoiceButton({
-            label: $r('app.string.demo_state_elevated'),
-            color: appStore.pulseState === PulseState.Elevated ? $r('app.color.orange') : $r('app.color.card'),
-            onPress: (): void => {
-              sensorService.selectVariant(PulseState.Elevated, appStore);
-            }
-          })
-          DemoChoiceButton({
-            label: $r('app.string.demo_state_critical'),
-            color: appStore.pulseState === PulseState.Critical ? $r('app.color.red') : $r('app.color.card'),
-            onPress: (): void => {
-              sensorService.selectVariant(PulseState.Critical, appStore);
-            }
-          })
-        }
-
         ExtraSettingButton({
           title: $r('app.string.test_vibration'),
           subtitle: this.vibrationSent ? $r('app.string.vibration_sent') : $r('app.string.tactile_notice'),
@@ -244,6 +232,59 @@ export struct SettingsPage {
             this.testVibration();
           }
         })
+
+        // Modo demostración: oculto. Se abre manteniendo pulsado el título 3 s (solo para revisión).
+        if (this.demoUnlocked || appStore.settings.demoMode) {
+          ExtraSettingToggle({
+            title: $r('app.string.demo_mode'),
+            subtitle: appStore.settings.demoMode ? $r('app.string.demo_mode_on_desc') : $r('app.string.demo_mode_desc'),
+            isOn: appStore.settings.demoMode,
+            hint: $r('app.string.demo_mode_desc'),
+            name: 'demoMode',
+            onValueChange: (value: boolean): void => {
+              // No se guarda: tras reiniciar, el Modo demostración siempre arranca apagado.
+              sensorService.setDemoMode(value);
+            }
+          })
+
+          if (appStore.settings.demoMode) {
+            Text($r('app.string.demo_mode_pick'))
+              .fontSize(dimens.u(DesignTokens.fsMin))
+              .fontColor($r('app.color.orange'))
+              .maxLines(2)
+              .textAlign(TextAlign.Center)
+              .width('100%')
+            DemoChoiceButton({
+              label: $r('app.string.demo_state_normal'),
+              color: appStore.pulseState === PulseState.Normal ? $r('app.color.green') : $r('app.color.card'),
+              onPress: (): void => {
+                sensorService.selectVariant(PulseState.Normal, appStore);
+              }
+            })
+            DemoChoiceButton({
+              label: $r('app.string.demo_state_elevated'),
+              color: appStore.pulseState === PulseState.Elevated ? $r('app.color.orange') : $r('app.color.card'),
+              onPress: (): void => {
+                sensorService.selectVariant(PulseState.Elevated, appStore);
+              }
+            })
+            DemoChoiceButton({
+              label: $r('app.string.demo_state_critical'),
+              color: appStore.pulseState === PulseState.Critical ? $r('app.color.red') : $r('app.color.card'),
+              onPress: (): void => {
+                sensorService.selectVariant(PulseState.Critical, appStore);
+              }
+            })
+          }
+          DemoChoiceButton({
+            label: $r('app.string.demo_hide'),
+            color: $r('app.color.surface_deep'),
+            onPress: (): void => {
+              sensorService.setDemoMode(false);
+              this.demoUnlocked = false;
+            }
+          })
+        }
       }
       .width('100%')
       .padding({ top: dimens.cqw(2.4), bottom: dimens.cqw(6) })
@@ -252,9 +293,6 @@ export struct SettingsPage {
     .height('100%')
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
-    .focusable(true)
-    .focusOnTouch(true)
-    .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
     .nestedScroll({
       scrollForward: NestedScrollMode.SELF_FIRST,
       scrollBackward: NestedScrollMode.SELF_FIRST

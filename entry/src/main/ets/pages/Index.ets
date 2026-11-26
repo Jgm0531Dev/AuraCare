@@ -18,9 +18,13 @@ import { SettingsPage } from './SettingsPage';
 import { AlertRoute } from '../components/AlertRoute';
 import { AddContactPage } from './AddContactPage';
 import { DEMO_GESTURE_ENABLED } from '../util/AppConfig';
+import { crownNav, NAV_TRACE } from '../util/CrownNav';
 import { AlertConfirmDialog } from '../components/AlertConfirmDialog';
 
 const MAIN_SWIPER_ID: string = 'mainSwiper';
+/** Contenedor que envuelve al ArcSwiper: único receptor de la corona en la pantalla principal. */
+const CROWN_HOST_ID: string = 'crownHost';
+
 
 @Entry
 @ComponentV2
@@ -30,6 +34,8 @@ struct Index {
   @Local debugScale: number = dimens.scale;
   @Local debugRoot: string = debugRootSize(dimens.rootWidthVp, dimens.rootHeightVp);
   private indicator: ArcDotIndicator = new ArcDotIndicator();
+  /** Momento del último cambio de página (toque o corona) y si lo provocó la corona. */
+  private lastPageChangeAt: number = 0;
   // Espejos locales: Index no re-renderiza con lecturas directas de appStore (comprobado en
   // previewer.log: disableSwipe y las capas de alerta no reaccionaban). Los alimenta EmergencyService.
   @Local alertState: AlertState = AlertState.None;
@@ -84,13 +90,34 @@ struct Index {
     }
   }
 
-  /** Devuelve el foco (y la corona) al ArcSwiper principal; tras Navigation se pide en el siguiente frame. */
+  /**
+   * Cambio de página por cualquier método (toque o corona nativa del ArcSwiper): las listas de otras
+   * páginas vuelven arriba y el foco sale de cualquier Scroll para que la corona llegue al swiper.
+   */
+  private onPageChanged(from: number, to: number): void {
+    const now: number = Date.now();
+    if (NAV_TRACE) {
+      Logger.info('Index', `[nav] cambio ${from} -> ${to} msDesdeCambio=${now - this.lastPageChangeAt}`);
+    }
+    this.lastPageChangeAt = now;
+    crownNav.notifyPageChanged(to);
+    this.focusSwiper(`onChange ${from}->${to}`);
+  }
+
+  /**
+   * Foco coherente tras cada cambio de página o al cerrar alerta/diálogo/ruta: se limpia el foco (p. ej.,
+   * el de una lista de otra página) y se da al contenedor de la página visible. Siguiente frame.
+   */
   private focusSwiper(reason: string): void {
+    // El foco va al contenedor que envuelve al swiper (el swiper es focusable(false) y no puede tenerlo).
     setTimeout((): void => {
       try {
-        this.getUIContext().getFocusController().requestFocus(MAIN_SWIPER_ID);
+        this.getUIContext().getFocusController().requestFocus(CROWN_HOST_ID);
+        if (NAV_TRACE) {
+          Logger.info('Index', `[nav] foco -> ${CROWN_HOST_ID} (${reason})`);
+        }
       } catch (err) {
-        Logger.error('Index', `requestFocus swiper falló (${reason})`, err as Object);
+        Logger.error('Index', `requestFocus contenedor falló (${reason})`, err as Object);
       }
     }, 0);
   }
@@ -303,6 +330,57 @@ struct Index {
   }
 
   @Builder
+  monitorPage() {
+    MonitorPage({
+      onOpenDemo: (): void => {
+        // Ruta 'demo' inalcanzable en release (salvo REVIEWER_DEMO_GESTURE).
+        if (!DEMO_GESTURE_ENABLED) {
+          return;
+        }
+        // Badge y pulsación larga pueden disparar dos veces: un solo panel en la pila.
+        if (this.pathStack.getAllPathName().indexOf('demo') >= 0) {
+          this.syncNavDepth('demoPush ignorado (ya abierto)');
+          return;
+        }
+        this.pathStack.pushPath({ name: 'demo' });
+        this.syncNavDepth('demoPush');
+      },
+      onOpenContacts: (): void => {
+        this.activePage = 4;
+      }
+    })
+  }
+
+  @Builder
+  sensorsPage() {
+    SensorsPage()
+  }
+
+  @Builder
+  rangePage() {
+    RangePage()
+  }
+
+  @Builder
+  medicalPage() {
+    MedicalPage()
+  }
+
+  @Builder
+  contactsPage() {
+    ContactsPage({
+      onPageStep: (delta: number): void => {
+        this.stepPage(delta);
+      }
+    })
+  }
+
+  @Builder
+  settingsPage() {
+    SettingsPage()
+  }
+
+  @Builder
   debugOverlay() {
     Stack({ alignContent: Alignment.TopStart }) {
       Column() {
@@ -344,58 +422,52 @@ struct Index {
         Navigation(this.pathStack) {
           // El margen derecho del 9% se aplica en cada página (dimens.safeRight())
           // para que los puntos del indicador no tapen el contenido.
-          ArcSwiper() {
-            MonitorPage({
-              onOpenDemo: (): void => {
-                // Ruta 'demo' inalcanzable en release (salvo REVIEWER_DEMO_GESTURE).
-                if (!DEMO_GESTURE_ENABLED) {
-                  return;
-                }
-                // Badge y pulsación larga pueden disparar dos veces: un solo panel en la pila.
-                if (this.pathStack.getAllPathName().indexOf('demo') >= 0) {
-                  this.syncNavDepth('demoPush ignorado (ya abierto)');
-                  return;
-                }
-                this.pathStack.pushPath({ name: 'demo' });
-                this.syncNavDepth('demoPush');
-              },
-              onOpenContacts: (): void => {
-                this.activePage = 4;
+          // Único receptor de la corona en la pantalla principal: desplaza la lista de la página visible.
+          Stack() {
+            ArcSwiper() {
+              this.monitorPage()
+              this.sensorsPage()
+              this.rangePage()
+              this.medicalPage()
+              this.contactsPage()
+              this.settingsPage()
+            }
+            .width('100%')
+            .height('100%')
+            .vertical(true)
+            .id(MAIN_SWIPER_ID)
+            // Plan B (v1.0.1): la corona NO cambia de página. focusable(false) en el swiper: según el SDK 24
+            // (requestFocus, error 150002 "unfocusable ancestor"), ni él ni sus páginas pueden tener el foco,
+            // y la corona solo se entrega al componente con foco. Navegación: toque e indicador.
+            .focusable(false)
+            .disableSwipe(this.alertState !== AlertState.None || this.dialogVisible)
+            .indicator(this.indicator)
+            .index(this.activePage)
+            .onChange((index: number) => {
+              const from: number = this.activePage;
+              this.activePage = index;
+              this.onPageChanged(from, index);
+            })
+            .onAnimationStart((index: number, targetIndex: number): void => {
+              if (NAV_TRACE) {
+                Logger.info('Index', `[nav] animación ${index} -> ${targetIndex}`);
               }
             })
-            SensorsPage()
-            RangePage()
-            MedicalPage()
-            ContactsPage({
-              onPageStep: (delta: number): void => {
-                this.stepPage(delta);
-              }
+            .onAreaChange((_oldValue: Area, newValue: Area) => {
+              dimens.logArea('Index', 'ArcSwiper', newValue);
             })
-            SettingsPage()
           }
           .width('100%')
           .height('100%')
-          .vertical(true)
-          // Corona: el ArcSwiper la recibe cuando tiene el foco (foco por defecto al abrir).
-          .id(MAIN_SWIPER_ID)
+          .id(CROWN_HOST_ID)
           .focusable(true)
           .defaultFocus(true)
-          .focusOnTouch(true)
-          .digitalCrownSensitivity(CrownSensitivity.MEDIUM)
-          .disableSwipe(this.alertState !== AlertState.None || this.dialogVisible)
-          .indicator(this.indicator)
-          .index(this.activePage)
-          .onChange((index: number) => {
-            this.activePage = index;
-            // Tras deslizar (o si un Scroll tomó el foco al tocarlo), la corona vuelve a cambiar de pantalla.
-            this.focusSwiper('onChange');
-            if (DEBUG_LAYOUT) {
-              Logger.info('Index',
-                `arcSwiper onChange: page=${index} overlayOpen=${appStore.dialogOpen} alert=${appStore.emergency.state} navStackDepth=${this.pathStack.size()}`);
+          .onDigitalCrown((event: CrownEvent): void => {
+            event.stopPropagation();
+            if (event.action !== CrownAction.UPDATE || this.alertState !== AlertState.None || this.dialogVisible) {
+              return;
             }
-          })
-          .onAreaChange((_oldValue: Area, newValue: Area) => {
-            dimens.logArea('Index', 'ArcSwiper', newValue);
+            crownNav.scrollPage(this.activePage, event.degree);
           })
         }
         .width('100%')

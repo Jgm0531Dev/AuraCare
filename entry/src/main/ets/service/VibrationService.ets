@@ -1,11 +1,10 @@
 import { vibrator } from '@kit.SensorServiceKit';
-import { abilityAccessCtrl, Context, Permissions } from '@kit.AbilityKit';
+import { Context } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { VibrationPattern } from '../state/EmergencyMachine';
 
 const DOMAIN = 0xA20C;
 const TAG = 'AuraCareVibration';
-const PERMISSION: Permissions = 'ohos.permission.VIBRATE';
 const SHORT_MS: number = 200;
 const PULSE_MS: number = 120;
 const GAP_MS: number = 60;
@@ -49,19 +48,6 @@ class VibrationService {
   init(context: Context): void {
     this.context = context;
     // VIBRATE es system_grant: se concede al instalar, no hace falta pedirlo en tiempo de ejecución.
-  }
-
-  async requestPermission(): Promise<void> {
-    if (this.context === undefined) {
-      return;
-    }
-    try {
-      const manager: abilityAccessCtrl.AtManager = abilityAccessCtrl.createAtManager();
-      const result = await manager.requestPermissionsFromUser(this.context, [PERMISSION]);
-      hilog.info(DOMAIN, TAG, 'Permiso de vibración concedido: %{public}d', result.authResults[0]);
-    } catch (err) {
-      hilog.error(DOMAIN, TAG, 'No se pudo solicitar el permiso de vibración: %{public}s', JSON.stringify(err));
-    }
   }
 
   vibrate(pattern: VibrationPattern, origin: string = 'alerta'): void {

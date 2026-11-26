@@ -182,5 +182,5 @@ export class DesignTokens {
   static readonly sensorUnavailableOpacity: number = 0.4;
   // Alerta enviada simulada: cabecera + aviso fijo (hasta 3 líneas de 26 base, interlínea 30).
   static readonly alertBannerLineBase: number = 30;
-  static readonly alertBannerMaxLines: number = 3;
+  static readonly alertBannerMaxLines: number = 2;
 }

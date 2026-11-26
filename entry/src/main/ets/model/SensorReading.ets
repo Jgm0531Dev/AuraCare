@@ -11,4 +11,6 @@ export interface SensorReading {
   immobile?: boolean;
   /** Pico de aceleración (en g) desde la lectura anterior; 0 si no hay dato. */
   peakG?: number;
+  /** true si el sensor WEAR_DETECTION dice que el reloj no está puesto (solo lecturas reales). */
+  notWorn?: boolean;
 }

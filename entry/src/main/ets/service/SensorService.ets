@@ -201,6 +201,7 @@ class SensorService {
 
     store.bpm = heartRateValid ? reading.bpm : 0;
     store.heartRateValid = heartRateValid;
+    store.notWorn = reading.notWorn === true;
     store.motionValid = motionValid;
     store.movementLabel = reading.movementLabel;
     store.movementImmobile = reading.immobile === true;
