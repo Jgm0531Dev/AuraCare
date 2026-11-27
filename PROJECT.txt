@@ -1,0 +1,67 @@
+AuraCare — ficha técnica del proyecto (v1.0.1)
+==============================================
+
+PLATAFORMA
+----------
+HarmonyOS NEXT para reloj. SDK 6.1.1(24), DevEco Studio 6.1.1. Lenguaje: ArkTS.
+Interfaz: ArkUI con navegación vertical ArcSwiper + ArcDotIndicator; las alertas y los diálogos
+son rutas de una única NavPathStack para que cubran la pantalla correctamente.
+
+ARQUITECTURA
+------------
+entry/src/main/ets/pages
+  Index.ets           Raíz @Entry: navegación, foco de corona, espejos locales del estado y rutas.
+  MonitorPage.ets     Pulso, movimiento, permiso de datos de salud y botón SOS.
+  SensorsPage.ets     Tarjetas de lectura; sensores no disponibles se muestran como tal.
+  RangePage.ets       Rango personal con Canvas de una sola escala.
+  MedicalPage.ets     Ficha médica (estado vacío en esta versión).
+  ContactsPage.ets    Contactos de emergencia y alta/edición.
+  AddContactPage.ets  Alta en dos pasos (relación y número).
+  SettingsPage.ets    Sensibilidad, recordatorios, ejercicio, caídas, ubicación y demo.
+
+entry/src/main/ets/service
+  SensorService       Selecciona proveedor real o simulado y publica lecturas.
+  RealSensorProvider  Permisos, disponibilidad, suscripción/liberación y reintentos.
+  MockSensorProvider  Proveedor de pruebas, marcado como simulado.
+  EmergencyService    Orquesta el flujo de emergencia, efectos y recuperación.
+  AlarmService        Alarma en bucle con audio y vibración.
+  NotificationService Notificación local y su canal.
+  LocationService     Ubicación opcional, leída solo al confirmar la alerta.
+  ContactPickerService, AlertStateRepository, SettingsRepository, RangeRepository.
+  VibrationService    Patrones de vibración y registro de diagnóstico.
+
+entry/src/main/ets/state  (TypeScript puro, sin dependencias de UI)
+  AppStore           Estado reactivo único (@ObservedV2 + @Trace).
+  EmergencyMachine   Máquina de estados y temporizadores.
+  AnomalyEngine      Reglas de pulso anómalo y validación de lecturas.
+  RangeModel         Rango normal a partir de agregados por hora.
+  MotionClassifier   Inmovilidad/repose/caminar a partir del acelerómetro.
+  AlertRecovery      Recupera una alerta tras segundo plano o reinicio.
+
+entry/src/main/ets/util
+  DesignTokens, Dimens (base 466), AppConfig (banderas de release), Logger, CrownNav.
+
+entry/src/test
+  Pruebas unitarias de EmergencyMachine, MotionClassifier, AnomalyEngine, RangeModel y
+  AlertRecovery. Referencia de la última ejecución: 58 pruebas, 0 fallos.
+
+DECISIONES DE DISEÑO
+-------------------
+- El proveedor real comprueba la lista de sensores antes de suscribirse (SensorId) y siempre
+  libera con sensor.off al salir, pasar a segundo plano o activar el modo demo.
+- Si el permiso se niega o no hay sensor, se muestra "--" o "No disponible": nunca un valor
+  inventado. El modo demostración está oculto al usuario normal y marca sus datos como DEMO.
+- La corona no cambia de página: el ArcSwiper no es focusable y un contenedor receptor reenvía
+  los giros a la lista de la página visible. Evita saltos de pantalla no deseados.
+- Los textos de la UI y de la tienda describen exactamente lo que hace la app (sin envío de
+  mensajes automáticos).
+
+PERMISOS Y PRIVACIDAD
+---------------------
+Permisos declarados: READ_HEALTH_DATA (user_grant), ACCELEROMETER, APPROXIMATELY_LOCATION y
+LOCATION (user_grant, solo si se activa la opción) y VIBRATE. Ninguno es restringido; las
+notificaciones se habilitan con el diálogo del sistema.
+
+Los datos se leen y se quedan en el reloj: histórico agregado de 7 días, hasta 5 contactos,
+ajustes y el estado de una alerta en curso. La ubicación no se guarda. No hay servidor,
+analítica, publicidad ni envío de mensajes. Desinstalar la app borra los datos.

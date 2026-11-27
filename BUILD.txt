@@ -1,0 +1,29 @@
+AuraCare — compilación y pruebas (v1.0.1)
+=========================================
+
+Requisitos
+----------
+DevEco Studio 6.1.1 con SDK 6.1.1(24). En esta máquina NODE_HOME y DEVECO_SDK_HOME son
+obligatorios y el JRE de DevEco debe estar en PATH para empaquetar el HAP.
+
+Compilación (PowerShell, desde la raíz del proyecto AuraCare2)
+-------------------------------------------------------------
+$env:NODE_HOME='C:\Program Files\Huawei\DevEco Studio\tools\node'; $env:PATH="C:\Program Files\Huawei\DevEco Studio\jbr\bin;$env:NODE_HOME;$env:PATH"; $env:DEVECO_SDK_HOME='C:\Program Files\Huawei\DevEco Studio\sdk'; & 'C:\Program Files\Huawei\DevEco Studio\tools\hvigor\bin\hvigorw.bat' assembleHap --mode module -p product=default -p buildMode=debug --no-daemon
+
+Resultado esperado: BUILD SUCCESSFUL.
+
+Pruebas unitarias
+-----------------
+$env:NODE_HOME='C:\Program Files\Huawei\DevEco Studio\tools\node'; $env:PATH="C:\Program Files\Huawei\DevEco Studio\jbr\bin;$env:NODE_HOME;$env:PATH"; $env:DEVECO_SDK_HOME='C:\Program Files\Huawei\DevEco Studio\sdk'; & 'C:\Program Files\Huawei\DevEco Studio\tools\hvigor\bin\hvigorw.bat' --mode module -p module=entry@default -p product=default test
+
+Resultado esperado: 58 pruebas, 0 fallos.
+
+Notas para publicar el código
+-----------------------------
+- El archivo build-profile.json5 del entorno de desarrollo puede contener signingConfigs con
+  rutas y credenciales del keystore. No debe subirse a un repositorio público: mantener
+  "signingConfigs": [] y guardar la configuración de firma solo en local.
+- local.properties y los binarios de firma (.p12, .cer, .csr, .p7b) tampoco deben subirse.
+- Las capturas recomendadas para la ficha de la tienda son 8: Monitor con pulso real,
+  Sensores, ¿Estás bien?, Alerta activa, Alerta con ubicación, Contactos, Tu rango normal y
+  Ajustes. Evitar capturas con datos de ejemplo presentados como reales.
