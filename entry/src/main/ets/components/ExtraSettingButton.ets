@@ -21,7 +21,7 @@ export struct ExtraSettingButton {
             .fontSize(dimens.u(DesignTokens.fsLabel))
             .fontColor($r('app.color.text_primary'))
             .fontWeight(FontWeight.Medium)
-            .maxLines(1)
+            .maxLines(2)
           Text(this.subtitle)
             .fontSize(dimens.u(DesignTokens.fsMin))
             .fontColor($r('app.color.muted'))

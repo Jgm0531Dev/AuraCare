@@ -287,7 +287,7 @@ export struct SettingsPage {
         }
       }
       .width('100%')
-      .padding({ top: dimens.cqw(2.4), bottom: dimens.cqw(6) })
+      .padding({ top: dimens.cqw(2.4), bottom: dimens.u(DesignTokens.scrollEndPaddingBase) })
     }
     .width('100%')
     .height('100%')

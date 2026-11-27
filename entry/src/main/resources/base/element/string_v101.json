@@ -227,6 +227,18 @@
     {
       "name": "pulse_not_worn",
       "value": "No colocado"
+    },
+    {
+      "name": "movement_normal",
+      "value": "Normal"
+    },
+    {
+      "name": "movement_alert",
+      "value": "Alerta"
+    },
+    {
+      "name": "movement_not_worn",
+      "value": "Sin reloj"
     }
   ]
 }

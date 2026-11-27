@@ -5,6 +5,8 @@ import { SensorCard } from '../components/SensorCard';
 import { appStore } from '../state/AppStore';
 import { sensorService } from '../service/SensorService';
 import { PulseState } from '../model/PulseState';
+import { AlertState } from '../model/Alert';
+import { AlertReason } from '../model/AlertReason';
 import { SensorCapabilities, SensorStatus } from '../model/SensorAvailability';
 import { DesignTokens } from '../util/DesignTokens';
 import { dimens } from '../util/Dimens';
@@ -116,9 +118,34 @@ export struct SensorsPage {
     return appStore.temperature < TEMP_HIGH ? $r('app.color.green') : this.tempColor();
   }
 
+  /** Alerta en curso disparada por una caída (impacto + inmovilidad, según AnomalyEngine). */
+  private fallAlertActive(): boolean {
+    return appStore.emergency.state !== AlertState.None && appStore.emergency.reason === AlertReason.Caida;
+  }
+
   private movementColor(): Resource {
-    return appStore.movementImmobile && appStore.pulseState === PulseState.Critical ?
-      $r('app.color.red') : $r('app.color.text_primary');
+    return this.fallAlertActive() ? $r('app.color.red') : $r('app.color.text_primary');
+  }
+
+  /** Estado propio del movimiento (antes repetía el del ritmo cardiaco). */
+  private movementStatus(): Resource {
+    if (appStore.notWorn) {
+      return $r('app.string.movement_not_worn');
+    }
+    if (this.fallAlertActive()) {
+      return $r('app.string.movement_alert');
+    }
+    if (!appStore.motionValid) {
+      return $r('app.string.pulse_no_reading');
+    }
+    return $r('app.string.movement_normal');
+  }
+
+  private movementStatusColor(): Resource {
+    if (appStore.notWorn || (!this.fallAlertActive() && !appStore.motionValid)) {
+      return $r('app.color.muted');
+    }
+    return this.fallAlertActive() ? $r('app.color.red') : $r('app.color.green');
   }
 
   @Builder
@@ -171,9 +198,9 @@ export struct SensorsPage {
       symbol: $r('sys.symbol.figure_walk'),
       name: $r('app.string.sensor_movement'),
       value: appStore.movementLabel,
-      status: this.pulseStatus(),
+      status: this.movementStatus(),
       valueColor: this.movementColor(),
-      statusColor: appStore.stateColor,
+      statusColor: this.movementStatusColor(),
       variant: appStore.capabilities.movement,
       simulated: sensorService.isSimulated()
     })
@@ -241,7 +268,7 @@ export struct SensorsPage {
       }
       .width('100%')
       .alignItems(HorizontalAlign.Center)
-      .padding({ top: dimens.cqw(2.4), bottom: dimens.cqw(6) })
+      .padding({ top: dimens.cqw(2.4), bottom: dimens.u(DesignTokens.scrollEndPaddingBase) })
     }
     .width('100%')
     .height('100%')

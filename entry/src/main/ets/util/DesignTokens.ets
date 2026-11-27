@@ -130,6 +130,8 @@ export class DesignTokens {
   static readonly contactsRowPaddingBase: number = 12;
   static readonly contactsListGapBase: number = 4;
   static readonly contactsFooterBottomBase: number = 12;
+  /** Margen al final de las listas con scroll (Ajustes, Sensores): el último bloque sube por encima del borde redondo. */
+  static readonly scrollEndPaddingBase: number = 72;
   static readonly contactsFooterGapBase: number = 8;
   static readonly phoneIconBase: number = 34;
   static readonly plusGlyphBase: number = 40;
